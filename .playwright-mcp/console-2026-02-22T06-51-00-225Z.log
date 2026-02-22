@@ -1,0 +1,5 @@
+[      33ms] The requested module '/src/api/moex.js?t=1771742734113' does not provide an export named 'fetchStocks'
+[   60810ms] The requested module '/src/api/moex.js?t=1771742734113' does not provide an export named 'fetchStocks'
+[   62202ms] The requested module '/src/api/moex.js?t=1771742734113' does not provide an export named 'fetchStocks'
+[   70245ms] The requested module '/src/api/moex.js?t=1771742734113' does not provide an export named 'fetchStocks'
+[   71412ms] The requested module '/src/api/moex.js?t=1771742734113' does not provide an export named 'fetchStocks'

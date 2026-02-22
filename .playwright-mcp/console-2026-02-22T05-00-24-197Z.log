@@ -1,0 +1,50 @@
+[  325939ms] [ERROR] React has detected a change in the order of Hooks called by %s. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+%s   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ PortfolioPage 1. useState                   useState
+2. useState                   useState
+3. useState                   useState
+4. useEffect                  useEffect
+5. useEffect                  useEffect
+6. useEffect                  useEffect
+7. useCallback                useCallback
+8. useCallback                useCallback
+9. useCallback                useCallback
+10. useCallback               useCallback
+11. useCallback               useCallback
+12. useCallback               useCallback
+13. useCallback               useCallback
+14. useState                  useCallback
+ @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:5591
+[  325943ms] Error: Should have a queue. You are likely calling Hooks conditionally, which is not allowed. (https://react.dev/link/invalid-hook-call)
+    at updateReducerImpl (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:5890:17)
+    at updateReducer (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:5885:16)
+    at Object.useState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:18994:20)
+    at exports.useState (http://localhost:5173/node_modules/.vite/deps/chunk-YSCK7JR7.js?v=5edb9060:981:36)
+    at useStocks (http://localhost:5173/src/hooks/useStocks.js:10:29)
+    at PortfolioPage (http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736750096:16:77)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:18507:20)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:5652:24)
+    at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:7473:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:8523:20)
+[  325943ms] [WARNING] %s
+
+%s
+ An error occurred in the <PortfolioPage> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=5edb9060:6963
+[  373011ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736797162:0
+[  373012ms] [ERROR] [vite] Failed to reload /src/pages/PortfolioPage.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  389050ms] [ERROR] [vite] SyntaxError: The requested module '/src/pages/PortfolioPage.jsx?t=1771736813241' does not provide an export named 'default' @ http://localhost:5173/@vite/client:808
+[  389050ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  405914ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736830069:0
+[  405914ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  422148ms] [ERROR] [vite] SyntaxError: The requested module '/src/pages/PortfolioPage.jsx?t=1771736846339' does not provide an export named 'default' @ http://localhost:5173/@vite/client:808
+[  422148ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  434008ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736858166:0
+[  434008ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  466863ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736891021:0
+[  466863ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808
+[  485879ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/pages/PortfolioPage.jsx?t=1771736910043:0
+[  485879ms] [ERROR] [vite] Failed to reload /src/App.jsx. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:808

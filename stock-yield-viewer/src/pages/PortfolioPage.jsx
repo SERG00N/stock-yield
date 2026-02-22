@@ -9,18 +9,20 @@ import CouponHistoryModal from '../components/CouponHistoryModal'
 import DividendHistoryModal from '../components/DividendHistoryModal'
 import EditPurchaseDateModal from '../components/EditPurchaseDateModal'
 import EditPurchasePriceModal from '../components/EditPurchasePriceModal'
+import ExportImportModal from '../components/ExportImportModal'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorDisplay from '../components/ErrorDisplay'
 import Header from '../components/Header'
 
 function PortfolioPage() {
-  const { portfolio, couponHistory, dividendHistory, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend } = usePortfolio()
+  const { portfolio, couponHistory, dividendHistory, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
   const { stocks: stockList, loading: stocksLoading, error: stocksError } = useStocks()
   const [bonds, setBonds] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [showDividendHistoryModal, setShowDividendHistoryModal] = useState(false)
   const [showAddDividendModal, setShowAddDividendModal] = useState(false)
+  const [showExportImportModal, setShowExportImportModal] = useState(false)
   const [addingDividendPosition, setAddingDividendPosition] = useState(null)
   const [showEditDateModal, setShowEditDateModal] = useState(false)
   const [editingPosition, setEditingPosition] = useState(null)
@@ -296,6 +298,12 @@ function PortfolioPage() {
                 {dividendHistory.length > 0 && (
                   <span className="ms-2 badge bg-white text-success">{dividendHistory.length}</span>
                 )}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowExportImportModal(true)}
+              >
+                <i className="bi bi-download"></i> Экспорт/Импорт
               </Button>
             </div>
           </Col>
@@ -601,6 +609,35 @@ function PortfolioPage() {
           portfolioPositions={positionsWithData}
           stocks={stockList}
           dividendHistoryData={dividendHistoryData}
+        />
+
+        {/* Модальное окно экспорта/импорта */}
+        <ExportImportModal
+          show={showExportImportModal}
+          onClose={() => setShowExportImportModal(false)}
+          onExportJSON={exportJSON}
+          onExportCSV={exportCSV}
+          onImportJSON={(data) => {
+            try {
+              importJSON(data)
+              alert('Портфель успешно импортирован!')
+              setShowExportImportModal(false)
+            } catch (err) {
+              alert('Ошибка импорта: ' + err.message)
+            }
+          }}
+          onImportCSV={(text) => {
+            try {
+              importCSV(text)
+              alert('Портфель успешно импортирован из CSV!')
+              setShowExportImportModal(false)
+            } catch (err) {
+              alert('Ошибка импорта: ' + err.message)
+            }
+          }}
+          portfolio={portfolio}
+          couponHistory={couponHistory}
+          dividendHistory={dividendHistory}
         />
       </Container>
     </div>

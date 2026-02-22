@@ -5,6 +5,117 @@ const COUPON_HISTORY_KEY = 'coupon-history'
 const DIVIDEND_HISTORY_KEY = 'dividend-history'
 
 /**
+ * Экспорт портфеля в JSON формат
+ */
+export function exportPortfolioJSON(portfolio, couponHistory, dividendHistory) {
+  const data = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    portfolio,
+    couponHistory,
+    dividendHistory
+  }
+  return JSON.stringify(data, null, 2)
+}
+
+/**
+ * Импорт портфеля из JSON формата
+ */
+export function importPortfolioJSON(jsonString) {
+  const data = JSON.parse(jsonString)
+  
+  if (!data.portfolio || !Array.isArray(data.portfolio)) {
+    throw new Error('Неверный формат файла: отсутствует портфель')
+  }
+
+  return {
+    portfolio: data.portfolio,
+    couponHistory: data.couponHistory || [],
+    dividendHistory: data.dividendHistory || []
+  }
+}
+
+/**
+ * Экспорт портфеля в CSV формат
+ */
+export function exportPortfolioCSV(portfolio) {
+  const headers = [
+    'ID',
+    'Тип',
+    'Тикер',
+    'Название',
+    'Количество',
+    'Средняя цена',
+    'Дата покупки',
+    'Получено купонов',
+    'Получено дивидендов'
+  ]
+
+  const rows = portfolio.map(p => [
+    p.id,
+    p.type,
+    p.ticker,
+    `"${p.name.replace(/"/g, '""')}"`, // Экранирование кавычек
+    p.quantity,
+    p.avgPrice.toFixed(2),
+    p.purchaseDate || '',
+    p.receivedCoupons || 0,
+    p.receivedDividends || 0
+  ].join(','))
+
+  return [headers.join(','), ...rows].join('\n')
+}
+
+/**
+ * Импорт портфеля из CSV формата
+ */
+export function importPortfolioCSV(csvText) {
+  const lines = csvText.trim().split('\n')
+  if (lines.length < 2) {
+    throw new Error('CSV файл пуст или содержит только заголовок')
+  }
+
+  // Пропускаем заголовок
+  const dataLines = lines.slice(1)
+  
+  const portfolio = dataLines.map((line, index) => {
+    // Парсинг CSV с учётом кавычек
+    const values = []
+    let current = ''
+    let inQuotes = false
+    
+    for (let char of line) {
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    values.push(current.trim())
+
+    const [id, type, ticker, name, quantity, avgPrice, purchaseDate, receivedCoupons, receivedDividends] = values
+
+    return {
+      id: parseInt(id) || Date.now() + index,
+      type: type || 'stock',
+      ticker: ticker || '',
+      name: name.replace(/^"|"$/g, '').replace(/""/g, '"'), // Убираем кавычки
+      quantity: parseInt(quantity) || 0,
+      avgPrice: parseFloat(avgPrice) || 0,
+      purchaseDate: purchaseDate || null,
+      receivedCoupons: parseInt(receivedCoupons) || 0,
+      receivedDividends: parseInt(receivedDividends) || 0,
+      securityId: ticker // Используем тикер как securityId
+    }
+  })
+
+  return { portfolio, couponHistory: [], dividendHistory: [] }
+}
+
+/**
  * Хук для управления портфелем бумаг
  * Данные сохраняются в localStorage
  */
@@ -267,6 +378,62 @@ export function usePortfolio() {
     }
   }, [])
 
+  // Экспорт портфеля в JSON файл
+  const exportJSON = useCallback(() => {
+    const jsonString = exportPortfolioJSON(portfolio, couponHistory, dividendHistory)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `portfolio-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [portfolio, couponHistory, dividendHistory])
+
+  // Экспорт портфеля в CSV файл
+  const exportCSV = useCallback(() => {
+    const csvString = exportPortfolioCSV(portfolio)
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `portfolio-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [portfolio])
+
+  // Импорт портфеля из JSON
+  const importJSON = useCallback((data) => {
+    try {
+      const imported = importPortfolioJSON(JSON.stringify(data))
+      setPortfolio(imported.portfolio)
+      setCouponHistory(imported.couponHistory || [])
+      setDividendHistory(imported.dividendHistory || [])
+      return true
+    } catch (err) {
+      console.error('Ошибка импорта JSON:', err)
+      throw err
+    }
+  }, [])
+
+  // Импорт портфеля из CSV
+  const importCSV = useCallback((csvText) => {
+    try {
+      const imported = importPortfolioCSV(csvText)
+      setPortfolio(imported.portfolio)
+      setCouponHistory([])
+      setDividendHistory([])
+      return true
+    } catch (err) {
+      console.error('Ошибка импорта CSV:', err)
+      throw err
+    }
+  }, [])
+
   return {
     portfolio,
     couponHistory,
@@ -281,6 +448,10 @@ export function usePortfolio() {
     confirmDividend,
     clearPortfolio,
     getTotalValue,
-    getTotalPnL
+    getTotalPnL,
+    exportJSON,
+    exportCSV,
+    importJSON,
+    importCSV
   }
 }

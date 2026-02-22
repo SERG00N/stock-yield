@@ -1,0 +1,211 @@
+{
+  "version": "1.0",
+  "exportDate": "2026-02-22T17:58:16.355Z",
+  "portfolio": [
+    {
+      "securityId": "RU000A108Z93",
+      "ticker": "RU000A108Z93",
+      "name": "ВТБ Лизинг 001Р-МБ-01",
+      "type": "bond",
+      "quantity": 20,
+      "avgPrice": 1000,
+      "id": 1771706134680,
+      "purchaseDate": "2026-02-22"
+    },
+    {
+      "securityId": "RU000A102VY6",
+      "ticker": "RU000A102VY6",
+      "name": "АТОМ БО-П01",
+      "type": "bond",
+      "quantity": 5,
+      "avgPrice": 990.18,
+      "id": 1771706676469,
+      "purchaseDate": "2025-05-05"
+    },
+    {
+      "securityId": "RU000A10BGJ4",
+      "ticker": "RU000A10BGJ4",
+      "name": "Аэрофлот П02-БО-01",
+      "type": "bond",
+      "quantity": 2,
+      "avgPrice": 1000,
+      "id": 1771737733319,
+      "purchaseDate": "2025-04-22"
+    },
+    {
+      "securityId": "RU000A10B1Q6",
+      "ticker": "RU000A10B1Q6",
+      "name": "Джи-групп 002P-06",
+      "type": "bond",
+      "quantity": 5,
+      "avgPrice": 5460.65,
+      "purchaseDate": "2025-03-03",
+      "receivedCoupons": 11,
+      "totalCouponAmount": 1118.7,
+      "id": 1771740515371
+    },
+    {
+      "securityId": "RU000A10BB75",
+      "ticker": "RU000A10BB75",
+      "name": "ЕвроТранс БО-001Р-07",
+      "type": "bond",
+      "quantity": 6,
+      "avgPrice": 1000,
+      "purchaseDate": "2025-04-07",
+      "receivedCoupons": 10,
+      "totalCouponAmount": 1208.4,
+      "totalPurchaseAmount": 6000,
+      "id": 1771741306691
+    },
+    {
+      "securityId": "RU000A10BRR4",
+      "ticker": "RU000A10BRR4",
+      "name": "РусГидро БО-002Р-06",
+      "type": "bond",
+      "quantity": 3,
+      "avgPrice": 1000,
+      "purchaseDate": "2025-06-02",
+      "receivedCoupons": 8,
+      "totalCouponAmount": 348.24,
+      "totalPurchaseAmount": 3000,
+      "id": 1771742426516
+    },
+    {
+      "securityId": "GAZP",
+      "ticker": "GAZP",
+      "name": "ГАЗПРОМ ао",
+      "type": "stock",
+      "quantity": 30,
+      "avgPrice": 128.62,
+      "purchaseDate": null,
+      "receivedCoupons": 0,
+      "totalCouponAmount": 0,
+      "totalPurchaseAmount": 4908.6,
+      "id": 1771744935675,
+      "lastDividendDate": "2026-02-22T08:22:30.242Z",
+      "lastDividendAmount": 1050
+    },
+    {
+      "securityId": "SBER",
+      "ticker": "SBER",
+      "name": "Сбербанк",
+      "type": "stock",
+      "quantity": 10,
+      "avgPrice": 225,
+      "purchaseDate": "2020-02-22",
+      "receivedCoupons": 0,
+      "totalCouponAmount": 0,
+      "totalPurchaseAmount": 2500,
+      "id": 1771746988225,
+      "lastDividendDate": "2026-02-22T08:16:20.114Z",
+      "lastDividendAmount": 250
+    },
+    {
+      "securityId": "RU000A10B3A6",
+      "ticker": "RU000A10B3A6",
+      "name": "Атомэнергопром АО 001Р-04",
+      "type": "bond",
+      "quantity": 6,
+      "avgPrice": 1000,
+      "purchaseDate": "2026-02-22",
+      "receivedCoupons": 0,
+      "totalCouponAmount": 0,
+      "totalPurchaseAmount": 6000,
+      "id": 1771749163574
+    }
+  ],
+  "couponHistory": [
+    {
+      "id": 1771739225814,
+      "positionId": 1771739225812,
+      "ticker": "RU000A108Z93",
+      "name": "ВТБ Лизинг 001Р-МБ-01",
+      "securityId": "RU000A108Z93",
+      "couponAmount": 1896.6999999999998,
+      "quantity": 10,
+      "date": "2026-02-22T05:47:05.813Z",
+      "isInitialCoupon": true,
+      "couponsCount": 13
+    },
+    {
+      "id": 1771740515372,
+      "positionId": 1771740515371,
+      "ticker": "RU000A10B1Q6",
+      "name": "Джи-групп 002P-06",
+      "securityId": "RU000A10B1Q6",
+      "couponAmount": 1118.7,
+      "quantity": 5,
+      "date": "2026-02-22T06:08:35.371Z",
+      "isInitialCoupon": true,
+      "couponsCount": 11
+    },
+    {
+      "id": 1771741306692,
+      "positionId": 1771741306691,
+      "ticker": "RU000A10BB75",
+      "name": "ЕвроТранс БО-001Р-07",
+      "securityId": "RU000A10BB75",
+      "couponAmount": 1208.4,
+      "quantity": 6,
+      "date": "2026-02-22T06:21:46.691Z",
+      "isInitialCoupon": true,
+      "couponsCount": 10
+    },
+    {
+      "id": 1771742426517,
+      "positionId": 1771742426516,
+      "ticker": "RU000A10BRR4",
+      "name": "РусГидро БО-002Р-06",
+      "securityId": "RU000A10BRR4",
+      "couponAmount": 348.24,
+      "quantity": 3,
+      "date": "2026-02-22T06:40:26.516Z",
+      "isInitialCoupon": true,
+      "couponsCount": 8
+    },
+    {
+      "id": 1771750700487,
+      "positionId": 1771750700477,
+      "ticker": "RU000A10BGJ4",
+      "name": "Аэрофлот П02-БО-01",
+      "securityId": "RU000A10BGJ4",
+      "couponAmount": 15.23,
+      "quantity": 1,
+      "date": "2026-01-19",
+      "isManualCoupon": true
+    },
+    {
+      "id": 1771750700488,
+      "positionId": 1771750700477,
+      "ticker": "RU000A10BGJ4",
+      "name": "Аэрофлот П02-БО-01",
+      "securityId": "RU000A10BGJ4",
+      "couponAmount": 15.12,
+      "quantity": 1,
+      "date": "2026-02-18",
+      "isManualCoupon": true
+    }
+  ],
+  "dividendHistory": [
+    {
+      "id": 1771748180114,
+      "positionId": 1771746988225,
+      "ticker": "SBER",
+      "name": "Сбербанк",
+      "securityId": "SBER",
+      "dividendAmount": 250,
+      "quantity": 10,
+      "date": "2026-02-22T08:16:20.114Z"
+    },
+    {
+      "id": 1771748550242,
+      "positionId": 1771744935675,
+      "ticker": "GAZP",
+      "name": "ГАЗПРОМ ао",
+      "securityId": "GAZP",
+      "dividendAmount": 1050,
+      "quantity": 30,
+      "date": "2026-02-22T08:22:30.242Z"
+    }
+  ]
+}

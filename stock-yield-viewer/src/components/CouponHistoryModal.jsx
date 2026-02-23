@@ -3,7 +3,7 @@ import { Modal, Button, Table, Badge } from 'react-bootstrap'
 /**
  * Модальное окно для отображения истории полученных купонов
  */
-function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, bonds, couponHistoryData }) {
+function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, bonds, couponHistoryData, onRemoveCoupon }) {
   // Сортировка по дате (новые сверху)
   const sortedHistory = [...couponHistory].sort((a, b) =>
     new Date(b.date) - new Date(a.date)
@@ -198,6 +198,7 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
                   <th>Купонов</th>
                   <th>Сумма купона</th>
                   <th>Тип</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -227,6 +228,19 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
                       ) : (
                         <Badge bg="success">Получение</Badge>
                       )}
+                    </td>
+                    <td>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('Удалить этот купон из истории?')) {
+                            onRemoveCoupon(item.id)
+                          }
+                        }}
+                      >
+                        <i className="bi bi-trash"></i>
+                      </Button>
                     </td>
                   </tr>
                 ))}

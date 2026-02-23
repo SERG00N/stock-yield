@@ -384,6 +384,11 @@ export function usePortfolio() {
     }
   }, [])
 
+  // Удаление купона из истории
+  const removeCoupon = useCallback((couponId) => {
+    setCouponHistory(prev => prev.filter(c => c.id !== couponId))
+  }, [])
+
   // Подтверждение получения дивиденда
   const confirmDividend = useCallback((positionId, dividendAmount, positionData) => {
     setPortfolio(prev =>
@@ -514,6 +519,7 @@ export function usePortfolio() {
     updatePurchaseDate,
     updatePurchasePrice,
     confirmCoupon,
+    removeCoupon,
     confirmDividend,
     confirmBondRedemption,
     clearPortfolio,

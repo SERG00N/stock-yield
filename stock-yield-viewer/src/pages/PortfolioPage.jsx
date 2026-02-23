@@ -456,6 +456,7 @@ function PortfolioPage() {
           portfolioPositions={positionsWithData}
           bonds={bonds}
           couponHistoryData={couponHistoryData}
+          onRemoveCoupon={removeCoupon}
         />
 
         {/* Модальное окно редактирования даты покупки */}

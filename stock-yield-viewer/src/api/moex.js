@@ -5,7 +5,7 @@ const BASE_URL = 'https://iss.moex.com/iss'
  * @returns {Promise<Object>} - Курсы валют { USD: 75.5, EUR: 82.3, ... }
  */
 export async function fetchCurrencyRates() {
-  const { currencyCache } = await import('./cbr')
+  const { currencyCache, detectCurrencyFromTicker } = await import('./cbr')
   return currencyCache.getRates()
 }
 
@@ -148,49 +148,66 @@ export function transformStockData(stock) {
 }
 
 /**
- * Получение списка облигаций
+ * Получение списка облигаций с нескольких торговых досок
+ * TQCB - корпоративные облигации
+ * TQOB - облигации для квалифицированных инвесторов (включая ОФЗ)
+ * TQRU - облигации в рублях
  */
 export async function fetchBonds() {
-  // Запрашиваем данные с marketdata для получения цен
-  // Добавляем ACCRUEDINT (НКД), COUPONVALUE (значение купона), COUPONPERIOD (периодичность в днях)
-  // FACEVALUE - номинал облигации
-  const url = `${BASE_URL}/engines/stock/markets/bonds/boards/TQCB/securities.json?iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,SECNAME,LOTSIZE,CURRENCYID,MATDATE,COUPONRATE,COUPONVALUE,ACCRUEDINT,COUPONPERIOD,PREVWAPRICE,PREVPRICE,FACEVALUE,FACEUNIT&marketdata.columns=SECID,LAST,LASTPREV,VOLUME,YIELD`
+  const boards = ['TQCB', 'TQOB', 'TQRU']
+  const allBonds = []
 
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json'
+  for (const board of boards) {
+    try {
+      const url = `${BASE_URL}/engines/stock/markets/bonds/boards/${board}/securities.json?iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,SECNAME,LOTSIZE,CURRENCYID,MATDATE,COUPONRATE,COUPONVALUE,ACCRUEDINT,COUPONPERIOD,PREVWAPRICE,PREVPRICE,FACEVALUE,FACEUNIT&marketdata.columns=SECID,LAST,LASTPREV,VOLUME,YIELD`
+
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        console.warn(`Не удалось загрузить облигации с доски ${board}: ${response.status}`)
+        continue
+      }
+
+      const data = await response.json()
+
+      const securitiesColumns = data.securities?.columns || []
+      const securitiesData = data.securities?.data || []
+
+      const marketdataColumns = data.marketdata?.columns || []
+      const marketdataData = data.marketdata?.data || []
+
+      const bonds = securitiesData.map(sec => {
+        const security = {}
+        securitiesColumns.forEach((col, i) => {
+          security[col] = sec[i]
+        })
+
+        const market = marketdataData?.find(m => m[0] === security.SECID)
+        if (market && marketdataColumns) {
+          marketdataColumns.forEach((col, i) => {
+            security[`MARKET_${col}`] = market[i]
+          })
+        }
+
+        return security
+      })
+
+      allBonds.push(...bonds)
+    } catch (err) {
+      console.warn(`Ошибка при загрузке облигаций с доски ${board}:`, err.message)
     }
-  })
-
-  if (!response.ok) {
-    throw new Error(`Ошибка MOEX API: ${response.status}`)
   }
 
-  const data = await response.json()
+  // Удаляем дубликаты по SECID (если облигация торгуется на нескольких досках)
+  const uniqueBonds = allBonds.filter((bond, index, self) =>
+    index === self.findIndex(b => b.SECID === bond.SECID)
+  )
 
-  const securitiesColumns = data.securities?.columns || []
-  const securitiesData = data.securities?.data || []
-
-  const marketdataColumns = data.marketdata?.columns || []
-  const marketdataData = data.marketdata?.data || []
-
-  const bonds = securitiesData.map(sec => {
-    const security = {}
-    securitiesColumns.forEach((col, i) => {
-      security[col] = sec[i]
-    })
-
-    const market = marketdataData?.find(m => m[0] === security.SECID)
-    if (market && marketdataColumns) {
-      marketdataColumns.forEach((col, i) => {
-        security[`MARKET_${col}`] = market[i]
-      })
-    }
-
-    return security
-  })
-
-  return bonds
+  return uniqueBonds
 }
 
 /**
@@ -411,7 +428,7 @@ export async function fetchDividendHistory(secid, useBackup = true) {
  */
 async function getDividendsFromBackupSources(secid) {
   console.log(`MOEX API не вернул дивиденды для ${secid}, пробуем резервные источники...`)
-  
+
   // 1. Пробуем Smart-Lab
   try {
     const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
@@ -423,8 +440,23 @@ async function getDividendsFromBackupSources(secid) {
   } catch (smartLabErr) {
     console.log('Smart-Lab не вернул данные:', smartLabErr.message)
   }
-  
-  // 2. Пробуем встроеннюю базу
+
+  // 2. Пробуем InvestFuture API
+  try {
+    const { fetchDividendsFromInvestFuture, fetchDividendsFromInvestFutureProxy } = await import('./investfuture')
+    let investFutureDividends = await fetchDividendsFromInvestFuture(secid)
+    if (investFutureDividends.length === 0) {
+      investFutureDividends = await fetchDividendsFromInvestFutureProxy(secid)
+    }
+    if (investFutureDividends.length > 0) {
+      console.log(`InvestFuture вернул ${investFutureDividends.length} дивидендов для ${secid}`)
+      return investFutureDividends
+    }
+  } catch (ifErr) {
+    console.log('InvestFuture не вернул данные:', ifErr.message)
+  }
+
+  // 3. Пробуем встроеннюю базу
   try {
     const { getDividendsFromDatabase } = await import('./dividendDatabase')
     const databaseDividends = getDividendsFromDatabase(secid)
@@ -435,7 +467,7 @@ async function getDividendsFromBackupSources(secid) {
   } catch (dbErr) {
     console.log('Встроенная база не вернула данные:', dbErr.message)
   }
-  
+
   console.log(`Дивиденды для ${secid} не найдены ни в одном источнике`)
   return []
 }
@@ -461,6 +493,54 @@ export function transformBondData(bond) {
   const accruedInterest = bond.ACCRUEDINT || 0
   const couponPeriod = bond.COUPONPERIOD || 0
 
+  // Определение валюты с несколькими источниками
+  let currency = null
+  const secid = bond.SECID || ''
+  
+  // 1. Сначала проверяем известные ISIN для юаневых облигаций (наивысший приоритет)
+  const yuanBonds = [
+    'RU000A10BY03', // Газпром капитал 003Р-15 (юани)
+    'RU000A10B8H1', // Полюс Золото 001P-06 (юани)
+    'RU000A10B7N6', // Роснефть 003P-18 (юани)
+    'SU000A10BQ0Y', // ТрансФин-М БО-07 (юани)
+    'RU000A10BX50', // Синара 002P-05 (юани)
+  ]
+  if (yuanBonds.includes(secid)) {
+    currency = 'CNY'
+  }
+  
+  // 2. Если не определено, пробуем определить по FACEUNIT (валюта номинала)
+  if (!currency) {
+    const faceUnit = bond.FACEUNIT || ''
+    if (faceUnit.includes('CNY') || faceUnit.includes('юань') || faceUnit.includes('yuan')) {
+      currency = 'CNY'
+    } else if (faceUnit.includes('USD') || faceUnit.includes('долл')) {
+      currency = 'USD'
+    } else if (faceUnit.includes('EUR') || faceUnit.includes('евро')) {
+      currency = 'EUR'
+    }
+  }
+
+  // 3. Дополнительная проверка по названию для некоторых облигаций
+  if (!currency) {
+    const secName = (bond.SECNAME || bond.SHORTNAME || '').toUpperCase()
+    if (secName.includes('ЮАНЬ') || secName.includes('CNY')) {
+      currency = 'CNY'
+    }
+  }
+
+  // 4. Если всё ещё не определено, используем CURRENCYID из MOEX
+  if (!currency) {
+    currency = bond.CURRENCYID || 'RUB'
+  }
+  
+  // Нормализация валюты (SUR -> RUB)
+  if (currency === 'SUR') {
+    currency = 'RUB'
+  }
+
+  // console.log(`[MOEX] Облигация ${secid}, валюта: ${currency} (CURRENCYID: ${bond.CURRENCYID})`)
+
   return {
     id: bond.SECID,
     ticker: bond.SECID,
@@ -472,7 +552,7 @@ export function transformBondData(bond) {
     changePercent: changePercent,
     yield: yieldValue ? parseFloat(yieldValue) : 0,
     volume: formatVolume(volume),
-    currency: bond.CURRENCYID || 'RUB',
+    currency: currency,
     lotSize: bond.LOTSIZE || 1,
     type: 'bond',
     maturityDate: bond.MATDATE || null,

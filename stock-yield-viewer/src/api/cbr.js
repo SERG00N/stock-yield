@@ -304,26 +304,24 @@ export function formatCurrency(amount, currency, rates = {}) {
  * @returns {string} - Код валюты (RUB, USD, EUR, etc.)
  */
 export function detectCurrencyFromTicker(ticker) {
-  // Российские рублёвые облигации обычно не имеют суффикса
-  // Валютные облигации могут иметь суффиксы:
-  // - SUXX (USD)
-  // - SUEX (EUR)
-  // - и т.д.
-  
   const tickerUpper = ticker.toUpperCase()
+
+  // Проверка по ISIN для российских облигаций
+  // RU000A10BY03 и другие с суффиксами -01, -02 и т.д. могут быть валютными
   
+  // Юаневые облигации (часто имеют CNY в названии или специальные серии)
+  if (tickerUpper.includes('CNY') || tickerUpper.includes('ЮАНЬ')) {
+    return CurrencyCodes.CNY
+  }
+
   if (tickerUpper.includes('SUXX') || tickerUpper.includes('USD')) {
     return CurrencyCodes.USD
   }
-  
+
   if (tickerUpper.includes('SUEX') || tickerUpper.includes('EUR')) {
     return CurrencyCodes.EUR
   }
-  
-  if (tickerUpper.includes('CNY')) {
-    return CurrencyCodes.CNY
-  }
-  
+
   // По умолчанию — рубли
   return CurrencyCodes.RUB
 }

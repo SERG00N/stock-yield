@@ -151,20 +151,31 @@ export const DIVIDEND_DATABASE = {
     { date: '2020-06-10', amount: 145.0, period: '2019', type: 'preferred' }
   ],
   
-  // Яндекс
+  // Яндекс (реальные выплаты)
   YNDX: [
-    { date: '2024-06-25', amount: 0, period: '2023', type: 'common' },
-    { date: '2023-06-20', amount: 0, period: '2022', type: 'common' },
-    { date: '2022-06-15', amount: 0, period: '2021', type: 'common' },
-    { date: '2021-06-10', amount: 0, period: '2020', type: 'common' },
-    { date: '2020-06-15', amount: 0, period: '2019', type: 'common' }
+    { date: '2024-12-20', amount: 30.0, period: '2024', type: 'common' }, // Промежуточные
+    { date: '2023-12-15', amount: 0, period: '2023', type: 'common' }, // Не выплачивались
+    { date: '2022-12-20', amount: 0, period: '2022', type: 'common' },
+    { date: '2021-12-15', amount: 0, period: '2021', type: 'common' },
+    { date: '2020-12-10', amount: 0, period: '2020', type: 'common' },
+    { date: '2019-12-05', amount: 0, period: '2019', type: 'common' }
   ],
-  
+
+  // Яндекс (альтернативный тикер YDEX)
+  YDEX: [
+    { date: '2024-12-20', amount: 30.0, period: '2024', type: 'common' }, // Промежуточные
+    { date: '2023-12-15', amount: 0, period: '2023', type: 'common' }, // Не выплачивались
+    { date: '2022-12-20', amount: 0, period: '2022', type: 'common' },
+    { date: '2021-12-15', amount: 0, period: '2021', type: 'common' },
+    { date: '2020-12-10', amount: 0, period: '2020', type: 'common' },
+    { date: '2019-12-05', amount: 0, period: '2019', type: 'common' }
+  ],
+
   // Озон
   OZON: [
-    { date: '2024-06-20', amount: 0, period: '2023', type: 'common' },
-    { date: '2023-06-15', amount: 0, period: '2022', type: 'common' },
-    { date: '2022-06-10', amount: 0, period: '2021', type: 'common' }
+    { date: '2024-09-15', amount: 0, period: '2024', type: 'common' },
+    { date: '2023-09-10', amount: 0, period: '2023', type: 'common' },
+    { date: '2022-09-05', amount: 0, period: '2022', type: 'common' }
   ],
   
   // ВТБ

@@ -125,6 +125,7 @@ export function usePortfolio() {
   const [couponHistory, setCouponHistory] = useState([])
   const [dividendHistory, setDividendHistory] = useState([])
   const [currencyRates, setCurrencyRates] = useState({ RUB: 1, USD: 75, EUR: 82 })
+  const [baseCurrency, setBaseCurrency] = useState('RUB') // Базовая валюта портфеля
   const [loading, setLoading] = useState(true)
 
   // Загрузка портфеля из localStorage
@@ -153,6 +154,11 @@ export function usePortfolio() {
       const savedRates = localStorage.getItem('currency-rates')
       if (savedRates) {
         setCurrencyRates(JSON.parse(savedRates))
+      }
+      // Загрузка базовой валюты портфеля
+      const savedBaseCurrency = localStorage.getItem('portfolio-base-currency')
+      if (savedBaseCurrency) {
+        setBaseCurrency(savedBaseCurrency)
       }
     } catch (err) {
       console.error('Ошибка загрузки портфеля:', err)
@@ -203,6 +209,13 @@ export function usePortfolio() {
       localStorage.setItem(DIVIDEND_HISTORY_KEY, JSON.stringify(dividendHistory))
     }
   }, [dividendHistory, loading])
+
+  // Сохранение базовой валюты портфеля в localStorage
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('portfolio-base-currency', baseCurrency)
+    }
+  }, [baseCurrency, loading])
 
   // Добавление бумаги в портфель
   const addPosition = useCallback((position) => {
@@ -322,50 +335,58 @@ export function usePortfolio() {
     setPortfolio([])
   }, [])
 
-  // Расчёт общей стоимости портфеля (в рублях)
-  const getTotalValue = useCallback((currentPrices, rates = currencyRates) => {
-    return portfolio.reduce((total, position) => {
+  // Расчёт общей стоимости портфеля в базовой валюте с учётом полученных купонов и дивидендов
+  const getTotalValue = useCallback((currentPrices, rates = currencyRates, baseCurr = baseCurrency) => {
+    // Стоимость позиций
+    const positionsValue = portfolio.reduce((total, position) => {
       const currentPrice = currentPrices.find(p => p.id === position.securityId)?.price || 0
       const currency = position.currency || 'RUB'
       const rate = rates[currency] || 1
-      
+
       // Конвертируем в рубли
       const valueInRub = currentPrice * position.quantity * rate
-      return total + valueInRub
+      // Конвертируем из рублей в базовую валюту
+      const baseRate = rates[baseCurr] || 1
+      return total + (valueInRub / baseRate)
     }, 0)
-  }, [portfolio, currencyRates])
 
-  // Расчёт общей прибыли/убытка (в рублях)
-  const getTotalPnL = useCallback((currentPrices, rates = currencyRates) => {
-    return portfolio.reduce((total, position) => {
+    // Добавляем полученные купоны и дивиденды (они уже в рублях)
+    const totalCoupons = couponHistory.reduce((sum, item) => sum + item.couponAmount, 0)
+    const totalDividends = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
+
+    // Конвертируем в базовую валюту
+    const baseRate = rates[baseCurr] || 1
+    return (positionsValue + totalCoupons + totalDividends) / baseRate
+  }, [portfolio, couponHistory, dividendHistory, currencyRates, baseCurrency])
+
+  // Расчёт общей прибыли/убытка в базовой валюте с учётом полученных купонов и дивидендов
+  const getTotalPnL = useCallback((currentPrices, rates = currencyRates, baseCurr = baseCurrency) => {
+    // Прибыль от изменения цены позиций
+    const positionsPnL = portfolio.reduce((total, position) => {
       const currentPrice = currentPrices.find(p => p.id === position.securityId)?.price || 0
       const currency = position.currency || 'RUB'
       const rate = rates[currency] || 1
-      
+
       const invested = position.avgPrice * position.quantity * rate
       const current = currentPrice * position.quantity * rate
-      return total + (current - invested)
+      const pnlInRub = current - invested
+
+      // Конвертируем в базовую валюту
+      const baseRate = rates[baseCurr] || 1
+      return total + (pnlInRub / baseRate)
     }, 0)
-  }, [portfolio, currencyRates])
+
+    // Добавляем полученные купоны и дивиденды как прибыль (они уже в рублях)
+    const totalCoupons = couponHistory.reduce((sum, item) => sum + item.couponAmount, 0)
+    const totalDividends = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
+
+    // Конвертируем в базовую валюту
+    const baseRate = rates[baseCurr] || 1
+    return positionsPnL + ((totalCoupons + totalDividends) / baseRate)
+  }, [portfolio, couponHistory, dividendHistory, currencyRates, baseCurrency])
 
   // Подтверждение получения купона
   const confirmCoupon = useCallback((positionId, couponAmount, positionData) => {
-    setPortfolio(prev =>
-      prev.map(p => {
-        if (p.id === positionId) {
-          // Уменьшаем среднюю цену покупки на сумму полученного купона
-          const newAvgPrice = Math.max(0, p.avgPrice - (couponAmount / p.quantity))
-          return {
-            ...p,
-            avgPrice: newAvgPrice,
-            lastCouponDate: new Date().toISOString(),
-            lastCouponAmount: couponAmount
-          }
-        }
-        return p
-      })
-    )
-
     // Добавляем запись в историю купонов
     if (positionData) {
       setCouponHistory(prev => [
@@ -384,6 +405,27 @@ export function usePortfolio() {
     }
   }, [])
 
+  // Добавление ручного купона для облигации
+  const addManualCoupon = useCallback((positionId, couponData, positionData) => {
+    if (positionData) {
+      setCouponHistory(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          positionId,
+          ticker: positionData.ticker,
+          name: positionData.name,
+          securityId: positionData.securityId,
+          couponAmount: couponData.totalAmount,
+          quantity: positionData.quantity,
+          date: couponData.date,
+          isManualCoupon: true,
+          notes: couponData.notes
+        }
+      ])
+    }
+  }, [])
+
   // Удаление купона из истории
   const removeCoupon = useCallback((couponId) => {
     setCouponHistory(prev => prev.filter(c => c.id !== couponId))
@@ -391,22 +433,6 @@ export function usePortfolio() {
 
   // Подтверждение получения дивиденда
   const confirmDividend = useCallback((positionId, dividendAmount, positionData) => {
-    setPortfolio(prev =>
-      prev.map(p => {
-        if (p.id === positionId) {
-          // Уменьшаем среднюю цену покупки на сумму полученного дивиденда
-          const newAvgPrice = Math.max(0, p.avgPrice - (dividendAmount / p.quantity))
-          return {
-            ...p,
-            avgPrice: newAvgPrice,
-            lastDividendDate: new Date().toISOString(),
-            lastDividendAmount: dividendAmount
-          }
-        }
-        return p
-      })
-    )
-
     // Добавляем запись в историю дивидендов
     if (positionData) {
       setDividendHistory(prev => [
@@ -423,6 +449,11 @@ export function usePortfolio() {
         }
       ])
     }
+  }, [])
+
+  // Удаление дивиденда из истории
+  const removeDividend = useCallback((dividendId) => {
+    setDividendHistory(prev => prev.filter(d => d.id !== dividendId))
   }, [])
 
   // Экспорт портфеля в JSON файл
@@ -512,6 +543,8 @@ export function usePortfolio() {
     couponHistory,
     dividendHistory,
     currencyRates,
+    baseCurrency,
+    setBaseCurrency,
     loading,
     addPosition,
     removePosition,
@@ -519,8 +552,10 @@ export function usePortfolio() {
     updatePurchaseDate,
     updatePurchasePrice,
     confirmCoupon,
+    addManualCoupon,
     removeCoupon,
     confirmDividend,
+    removeDividend,
     confirmBondRedemption,
     clearPortfolio,
     getTotalValue,
@@ -531,3 +566,4 @@ export function usePortfolio() {
     importCSV
   }
 }
+ 

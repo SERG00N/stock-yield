@@ -8,6 +8,7 @@ import SearchBar from './components/SearchBar'
 import LoadingSpinner from './components/LoadingSpinner'
 import ErrorDisplay from './components/ErrorDisplay'
 import PortfolioPage from './pages/PortfolioPage'
+import SecurityDetailPage from './pages/SecurityDetailPage'
 import { useStocks } from './hooks/useStocks'
 import './App.css'
 
@@ -89,6 +90,7 @@ function App() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/portfolio" element={<PortfolioPage />} />
+      <Route path="/security/:type/:secid" element={<SecurityDetailPage />} />
     </Routes>
   )
 }

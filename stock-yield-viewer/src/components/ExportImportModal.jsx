@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Modal, Button, Row, Col, Card } from 'react-bootstrap'
 
 /**
@@ -15,6 +16,10 @@ function ExportImportModal({
   couponHistory,
   dividendHistory
 }) {
+  // Рефы для input элементов
+  const jsonInputRef = useRef(null)
+  const csvInputRef = useRef(null)
+
   // Обработка выбора файла для импорта JSON
   const handleImportJSONFile = (event) => {
     const file = event.target.files[0]
@@ -51,6 +56,16 @@ function ExportImportModal({
     reader.readAsText(file, 'UTF-8')
     // Очищаем input
     event.target.value = ''
+  }
+
+  // Клик по кнопке импорта JSON
+  const handleJSONImportClick = () => {
+    jsonInputRef.current?.click()
+  }
+
+  // Клик по кнопке импорта CSV
+  const handleCSVImportClick = () => {
+    csvInputRef.current?.click()
   }
 
   return (
@@ -109,30 +124,40 @@ function ExportImportModal({
                 </p>
                 
                 <div>
-                  <label className="btn btn-primary w-100 mb-2">
+                  <Button
+                    variant="primary"
+                    onClick={handleJSONImportClick}
+                    className="w-100 mb-2"
+                  >
                     <i className="bi bi-filetype-json"></i> Импорт из JSON
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={handleImportJSONFile}
-                      hidden
-                    />
-                  </label>
+                  </Button>
+                  <input
+                    ref={jsonInputRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportJSONFile}
+                    style={{ display: 'none' }}
+                  />
                   <small className="text-muted d-block text-center">
                     Полный импорт с историей
                   </small>
                 </div>
-                
+
                 <div>
-                  <label className="btn btn-outline-primary w-100 mb-2">
+                  <Button
+                    variant="outline-primary"
+                    onClick={handleCSVImportClick}
+                    className="w-100 mb-2"
+                  >
                     <i className="bi bi-filetype-csv"></i> Импорт из CSV
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleImportCSVFile}
-                      hidden
-                    />
-                  </label>
+                  </Button>
+                  <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportCSVFile}
+                    style={{ display: 'none' }}
+                  />
                   <small className="text-muted d-block text-center">
                     Только позиции (без истории)
                   </small>

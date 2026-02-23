@@ -3,9 +3,63 @@ import { Modal, Button, Table, Badge } from 'react-bootstrap'
 /**
  * Модальное окно для отображения истории полученных дивидендов
  */
-function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositions, dividendHistoryData }) {
-  // Подсчёт общей суммы полученных дивидендов (из ручной истории)
-  const totalDividends = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
+function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositions, dividendHistoryData, onRemoveDividend }) {
+  // Создаём полную историю дивидендов из API + ручные
+  const getAllDividends = () => {
+    const allDividends = []
+    const today = new Date()
+
+    portfolioPositions
+      .filter(p => p.type === 'stock' && p.purchaseDate)
+      .forEach(position => {
+        const purchaseDate = new Date(position.purchaseDate)
+        const quantity = position.quantity
+        const apiHistory = dividendHistoryData[position.securityId] || []
+
+        // Добавляем дивиденды из API
+        apiHistory.forEach(div => {
+          if (!div.date) return
+          const divDate = new Date(div.date)
+
+          // Показываем только дивиденды после даты покупки и не будущие
+          if (divDate < purchaseDate || divDate > today) return
+
+          allDividends.push({
+            id: `api-${position.securityId}-${div.date}`,
+            date: div.date,
+            ticker: position.ticker,
+            name: position.name,
+            quantity,
+            dividendAmount: (div.amount || 0) * quantity,
+            amountPerShare: div.amount || 0,
+            type: div.type || 'common',
+            source: 'api',
+            period: div.period,
+            securityId: position.securityId
+          })
+        })
+      })
+
+    // Добавляем ручные дивиденды
+    dividendHistory.forEach(item => {
+      allDividends.push({
+        ...item,
+        source: 'manual',
+        amountPerShare: item.dividendAmount / item.quantity
+      })
+    })
+
+    // Сортируем по дате (новые сверху)
+    return allDividends.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }
+
+  const allDividends = getAllDividends()
+
+  // Подсчёт общей суммы всех дивидендов (API + ручные)
+  const totalDividends = allDividends.reduce((sum, item) => sum + item.dividendAmount, 0)
+
+  // Подсчёт только ручных дивидендов
+  const manualDividendsTotal = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
 
   // Расчёт дивидендов по годам для всех акций в портфеле
   const calculateDividendsByYearFromPositions = () => {
@@ -62,56 +116,6 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
   const calculatedDividendsByYear = calculateDividendsByYearFromPositions()
   const sortedYears = Object.keys(calculatedDividendsByYear).sort((a, b) => b - a)
 
-  // Создаём полную историю дивидендов из API + ручные
-  const getAllDividends = () => {
-    const allDividends = []
-    const today = new Date()
-
-    portfolioPositions
-      .filter(p => p.type === 'stock' && p.purchaseDate)
-      .forEach(position => {
-        const purchaseDate = new Date(position.purchaseDate)
-        const quantity = position.quantity
-        const apiHistory = dividendHistoryData[position.securityId] || []
-
-        // Добавляем дивиденды из API
-        apiHistory.forEach(div => {
-          if (!div.date) return
-          const divDate = new Date(div.date)
-
-          // Показываем только дивиденды после даты покупки и не будущие
-          if (divDate < purchaseDate || divDate > today) return
-
-          allDividends.push({
-            id: `api-${position.securityId}-${div.date}`,
-            date: div.date,
-            ticker: position.ticker,
-            name: position.name,
-            quantity,
-            dividendAmount: (div.amount || 0) * quantity,
-            amountPerShare: div.amount || 0,
-            type: div.type || 'common',
-            source: 'api',
-            period: div.period
-          })
-        })
-      })
-
-    // Добавляем ручные дивиденды
-    dividendHistory.forEach(item => {
-      allDividends.push({
-        ...item,
-        source: 'manual',
-        amountPerShare: item.dividendAmount / item.quantity
-      })
-    })
-
-    // Сортируем по дате (новые сверху)
-    return allDividends.sort((a, b) => new Date(b.date) - new Date(a.date))
-  }
-
-  const allDividends = getAllDividends()
-
   // Форматирование даты
   const formatDate = (isoString) => {
     return new Date(isoString).toLocaleDateString('ru-RU', {
@@ -152,9 +156,14 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
           <>
             <div className="mb-3 p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '8px' }}>
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <strong>Всего получено (ручные):</strong>
+                <strong>Всего получено:</strong>
                 <span className="text-success fw-bold" style={{ fontSize: '1.25rem' }}>₽{totalDividends.toFixed(2)}</span>
               </div>
+              {manualDividendsTotal > 0 && (
+                <div className="text-white-50 small mb-2">
+                  в т.ч. ручные: ₽{manualDividendsTotal.toFixed(2)}
+                </div>
+              )}
               {sortedYears.length > 0 && (
                 <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
                   <div className="text-white mb-2">По годам (из API):</div>
@@ -207,6 +216,7 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
                       <th>Период</th>
                       <th>Тип</th>
                       <th>Источник</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -237,6 +247,25 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
                             <Badge bg="info">При добавлении</Badge>
                           ) : (
                             <Badge bg="success">Ручной</Badge>
+                          )}
+                        </td>
+                        <td>
+                          {item.source === 'api' ? (
+                            // Для API дивидендов - информация
+                            <span className="text-white-50 small">Из API</span>
+                          ) : (
+                            // Для ручных и "При добавлении" - кнопка удаления
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Удалить этот дивиденд из истории?')) {
+                                  onRemoveDividend(item.id)
+                                }
+                              }}
+                            >
+                              <i className="bi bi-trash"></i>
+                            </Button>
                           )}
                         </td>
                       </tr>

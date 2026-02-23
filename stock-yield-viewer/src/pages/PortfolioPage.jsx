@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { Container, Row, Col, Button, Card } from 'react-bootstrap'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Container, Row, Col, Button, Card, Modal } from 'react-bootstrap'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useStocks } from '../hooks/useStocks'
 import { fetchBonds, transformBondData, formatCouponPeriod, fetchNextCouponDate, daysUntilCoupon, daysUntilMaturity, formatDate, fetchCouponHistory, fetchDividendHistory } from '../api/moex'
 import AddToPortfolioModal from '../components/AddToPortfolioModal'
 import AddDividendModal from '../components/AddDividendModal'
+import AddManualCouponModal from '../components/AddManualCouponModal'
 import CouponHistoryModal from '../components/CouponHistoryModal'
 import DividendHistoryModal from '../components/DividendHistoryModal'
 import EditPurchaseDateModal from '../components/EditPurchaseDateModal'
@@ -16,9 +17,22 @@ import PositionsTable from '../components/PositionsTable'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorDisplay from '../components/ErrorDisplay'
 import Header from '../components/Header'
+import CouponNotifications from '../components/CouponNotifications'
+import PortfolioCharts from '../components/PortfolioCharts'
+import PortfolioCurrencyModal from '../components/PortfolioCurrencyModal'
+import { formatMoney } from '../utils/format'
+
+// Символы валют
+const CURRENCY_SYMBOLS = {
+  RUB: '₽',
+  USD: '$',
+  EUR: '€',
+  CNY: '¥',
+  GBP: '£'
+}
 
 function PortfolioPage() {
-  const { portfolio, redeemedBonds, couponHistory, dividendHistory, currencyRates, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, removeCoupon, confirmDividend, confirmBondRedemption, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
+  const { portfolio, redeemedBonds, couponHistory, dividendHistory, currencyRates, baseCurrency, setBaseCurrency, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, addManualCoupon, removeCoupon, confirmDividend, removeDividend, confirmBondRedemption, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
   const { stocks: stockList, loading: stocksLoading, error: stocksError } = useStocks()
   const [bonds, setBonds] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -28,7 +42,10 @@ function PortfolioPage() {
   const [showExportImportModal, setShowExportImportModal] = useState(false)
   const [showBondRedemptionModal, setShowBondRedemptionModal] = useState(false)
   const [showRedeemedBondsModal, setShowRedeemedBondsModal] = useState(false)
+  const [showChartsModal, setShowChartsModal] = useState(false)
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false)
   const [addingDividendPosition, setAddingDividendPosition] = useState(null)
+  const [addingCouponPosition, setAddingCouponPosition] = useState(null)
   const [bondRedemptionPosition, setBondRedemptionPosition] = useState(null)
   const [showEditDateModal, setShowEditDateModal] = useState(false)
   const [editingPosition, setEditingPosition] = useState(null)
@@ -40,6 +57,7 @@ function PortfolioPage() {
   const [receivedCoupons, setReceivedCoupons] = useState({})
   const [couponHistoryData, setCouponHistoryData] = useState({})
   const [dividendHistoryData, setDividendHistoryData] = useState({})
+  const [lastCouponUpdate, setLastCouponUpdate] = useState(Date.now())
   const loadedCouponIdsRef = useRef(new Set())
 
   // Обработка подтверждения получения купона
@@ -119,6 +137,19 @@ function PortfolioPage() {
     }
     setShowAddDividendModal(false)
     setAddingDividendPosition(null)
+  }
+
+  // Обработка добавления купона
+  const handleAddCoupon = (couponData) => {
+    if (addingCouponPosition) {
+      addManualCoupon(addingCouponPosition.id, couponData, {
+        ticker: addingCouponPosition.ticker,
+        name: addingCouponPosition.name,
+        securityId: addingCouponPosition.securityId,
+        quantity: addingCouponPosition.quantity
+      })
+    }
+    setAddingCouponPosition(null)
   }
 
   // Загрузка облигаций при загрузке страницы
@@ -207,6 +238,60 @@ function PortfolioPage() {
     loadDividendData()
   }, [portfolio])
 
+  // Автоматическое обновление таймера "До купона" каждый день
+  useEffect(() => {
+    // Функция для пересчёта дней до купонов
+    const recalculateCouponDates = () => {
+      const portfolioBondIds = portfolio.filter(p => p.type === 'bond').map(p => p.securityId)
+      if (portfolioBondIds.length === 0) return
+
+      const couponDatesMap = {}
+
+      portfolioBondIds.forEach(secid => {
+        // Пропускаем подтверждённые купоны
+        if (receivedCoupons[secid]) return
+
+        // Пересчитываем дни до купона на основе текущей даты
+        // loadedCouponIdsRef используется для хранения уже загруженных дат
+        // При изменении даты пересчитываем все даты
+        const storedCouponDate = couponDates[secid]
+        if (storedCouponDate !== undefined && storedCouponDate !== null) {
+          // Просто обновляем, чтобы триггернуть перерисовку
+          couponDatesMap[secid] = storedCouponDate
+        }
+      })
+
+      if (Object.keys(couponDatesMap).length > 0) {
+        setCouponDates(prev => ({ ...prev, ...couponDatesMap }))
+      }
+    }
+
+    // Вычисляем время до следующей полуночи
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+
+    const msUntilMidnight = tomorrow.getTime() - now.getTime()
+
+    // Планируем обновление на полночь
+    const midnightTimeout = setTimeout(() => {
+      recalculateCouponDates()
+      setLastCouponUpdate(Date.now())
+
+      // Затем обновляем каждые 24 часа
+      const dailyInterval = setInterval(() => {
+        recalculateCouponDates()
+        setLastCouponUpdate(Date.now())
+      }, 24 * 60 * 60 * 1000)
+
+      // Очищаем интервал при размонтировании
+      return () => clearInterval(dailyInterval)
+    }, msUntilMidnight)
+
+    return () => clearTimeout(midnightTimeout)
+  }, [portfolio, couponDates, receivedCoupons])
+
   // Получаем текущие цены для расчётов
   const currentPrices = [...stockList, ...bonds].map(s => ({ id: s.id, price: s.price }))
 
@@ -254,18 +339,32 @@ function PortfolioPage() {
     }
   })
 
+  const currencySymbol = CURRENCY_SYMBOLS[baseCurrency] || baseCurrency
   const totalValue = getTotalValue(currentPrices)
   const totalPnL = getTotalPnL(currentPrices)
-  const totalInvested = portfolio.reduce((sum, p) => sum + (p.avgPrice * p.quantity), 0)
+  const totalInvestedRub = portfolio.reduce((sum, p) => {
+    const rate = currencyRates[p.currency || 'RUB'] || 1
+    return sum + (p.avgPrice * p.quantity * rate)
+  }, 0)
+  const totalInvested = totalInvestedRub / (currencyRates[baseCurrency] || 1)
   const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
-  
-  // Общая сумма купонов по облигациям
-  const totalCoupons = positionsWithData
-    .filter(p => p.type === 'bond')
-    .reduce((sum, p) => sum + p.totalCoupon, 0)
 
-  // Общая сумма полученных купонов (из истории)
-  const totalReceivedCoupons = couponHistory.reduce((sum, item) => sum + item.couponAmount, 0)
+  // Общая сумма купонов по облигациям (ожидаемые) - в рублях
+  const totalCouponsRub = positionsWithData
+    .filter(p => p.type === 'bond')
+    .reduce((sum, p) => {
+      const rate = currencyRates[p.currency || 'RUB'] || 1
+      return sum + (p.totalCoupon * rate)
+    }, 0)
+  const totalCoupons = totalCouponsRub / (currencyRates[baseCurrency] || 1)
+
+  // Общая сумма полученных купонов (из истории) - в рублях
+  const totalReceivedCouponsRub = couponHistory.reduce((sum, item) => sum + item.couponAmount, 0)
+  const totalReceivedCoupons = totalReceivedCouponsRub / (currencyRates[baseCurrency] || 1)
+
+  // Общая сумма полученных дивидендов (из истории) - в рублях
+  const totalReceivedDividendsRub = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
+  const totalReceivedDividends = totalReceivedDividendsRub / (currencyRates[baseCurrency] || 1)
 
   if (stocksLoading) {
     return (
@@ -299,6 +398,14 @@ function PortfolioPage() {
             <h2><i className="bi bi-briefcase"></i> Мой портфель</h2>
           </Col>
         </Row>
+
+        {/* Уведомления о купонах */}
+        <CouponNotifications
+          positions={positionsWithData}
+          couponDates={couponDates}
+          receivedCoupons={receivedCoupons}
+        />
+
         <Row className="mb-4">
           <Col>
             <div className="d-flex gap-2 flex-wrap">
@@ -344,6 +451,19 @@ function PortfolioPage() {
               >
                 <i className="bi bi-download"></i> Экспорт/Импорт
               </Button>
+              <Button
+                variant="dark"
+                onClick={() => setShowChartsModal(true)}
+                disabled={portfolio.length === 0}
+              >
+                <i className="bi bi-graph-up"></i> Графики
+              </Button>
+              <Button
+                variant="outline-light"
+                onClick={() => setShowCurrencyModal(true)}
+              >
+                <i className="bi bi-currency-exchange"></i> {baseCurrency}
+              </Button>
             </div>
           </Col>
         </Row>
@@ -354,7 +474,13 @@ function PortfolioPage() {
             <Card className="portfolio-summary">
               <Card.Body>
                 <Card.Title>Стоимость портфеля</Card.Title>
-                <Card.Text className="summary-value">₽{totalValue.toFixed(2)}</Card.Text>
+                <Card.Text className="summary-value">{formatMoney(totalValue, currencySymbol)}</Card.Text>
+                {totalReceivedCoupons > 0 || totalReceivedDividends > 0 ? (
+                  <div className="text-white-50" style={{ fontSize: '0.85rem' }}>
+                    <div>в т.ч. купоны: {formatMoney(totalReceivedCoupons, currencySymbol)}</div>
+                    <div>в т.ч. дивиденды: {formatMoney(totalReceivedDividends, currencySymbol)}</div>
+                  </div>
+                ) : null}
               </Card.Body>
             </Card>
           </Col>
@@ -362,7 +488,7 @@ function PortfolioPage() {
             <Card className="portfolio-summary">
               <Card.Body>
                 <Card.Title>Вложено</Card.Title>
-                <Card.Text className="summary-value">₽{totalInvested.toFixed(2)}</Card.Text>
+                <Card.Text className="summary-value">{formatMoney(totalInvested, currencySymbol)}</Card.Text>
               </Card.Body>
             </Card>
           </Col>
@@ -371,7 +497,7 @@ function PortfolioPage() {
               <Card.Body>
                 <Card.Title>Прибыль/Убыток</Card.Title>
                 <Card.Text className={`summary-value ${totalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {totalPnL >= 0 ? '+' : ''}₽{totalPnL.toFixed(2)} ({totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
+                  {totalPnL >= 0 ? '+' : ''}{formatMoney(totalPnL, currencySymbol)} ({totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
                 </Card.Text>
               </Card.Body>
             </Card>
@@ -381,18 +507,24 @@ function PortfolioPage() {
               <Card.Body>
                 <Card.Title>Купоны (облигации)</Card.Title>
                 <Card.Text className={`summary-value ${totalCoupons > 0 ? 'text-success' : ''}`}>
-                  ₽{totalCoupons.toFixed(2)}
+                  {formatMoney(totalCoupons, currencySymbol)}
                 </Card.Text>
+                <div className="text-white-50" style={{ fontSize: '0.85rem' }}>
+                  <div>Получено: {formatMoney(totalReceivedCoupons, currencySymbol)}</div>
+                </div>
               </Card.Body>
             </Card>
           </Col>
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title>Получено купонов</Card.Title>
-                <Card.Text className={`summary-value ${totalReceivedCoupons > 0 ? 'text-success' : ''}`}>
-                  ₽{totalReceivedCoupons.toFixed(2)}
+                <Card.Title>Дивиденды (акции)</Card.Title>
+                <Card.Text className={`summary-value ${totalReceivedDividends > 0 ? 'text-success' : ''}`}>
+                  {formatMoney(totalReceivedDividends, currencySymbol)}
                 </Card.Text>
+                <div className="text-white-50" style={{ fontSize: '0.85rem' }}>
+                  <div>Получено: {formatMoney(totalReceivedDividends, currencySymbol)}</div>
+                </div>
               </Card.Body>
             </Card>
           </Col>
@@ -424,6 +556,9 @@ function PortfolioPage() {
               onAddDividend={(position) => {
                 setAddingDividendPosition(position)
                 setShowAddDividendModal(true)
+              }}
+              onAddCoupon={(position) => {
+                setAddingCouponPosition(position)
               }}
               onConfirmCoupon={handleConfirmCoupon}
               onBondRedemption={handleBondRedemption}
@@ -497,6 +632,7 @@ function PortfolioPage() {
           portfolioPositions={positionsWithData}
           stocks={stockList}
           dividendHistoryData={dividendHistoryData}
+          onRemoveDividend={removeDividend}
         />
 
         {/* Модальное окно экспорта/импорта */}
@@ -544,6 +680,45 @@ function PortfolioPage() {
           show={showRedeemedBondsModal}
           onClose={() => setShowRedeemedBondsModal(false)}
           redeemedBonds={redeemedBonds}
+        />
+
+        {/* Модальное окно с графиками */}
+        <Modal
+          show={showChartsModal}
+          onHide={() => setShowChartsModal(false)}
+          size="xl"
+          centered
+          className="dark-theme"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="bi bi-graph-up"></i> Графики портфеля
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <PortfolioCharts
+              positions={positionsWithData}
+              couponHistory={couponHistory}
+              dividendHistory={dividendHistory}
+            />
+          </Modal.Body>
+        </Modal>
+
+        {/* Модальное окно выбора валюты */}
+        <PortfolioCurrencyModal
+          show={showCurrencyModal}
+          onClose={() => setShowCurrencyModal(false)}
+          currentCurrency={baseCurrency}
+          onSave={(currency) => setBaseCurrency(currency)}
+          currencyRates={currencyRates}
+        />
+
+        {/* Модальное окно добавления купона */}
+        <AddManualCouponModal
+          show={!!addingCouponPosition}
+          onClose={() => setAddingCouponPosition(null)}
+          onSave={handleAddCoupon}
+          position={addingCouponPosition}
         />
       </Container>
     </div>

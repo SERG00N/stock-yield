@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react'
 import { Table, Button, Badge, Nav } from 'react-bootstrap'
+import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../api/moex'
+import { formatNumber } from '../utils/format'
 
 /**
  * Таблица позиций портфеля с разделением на акции и облигации
@@ -12,6 +14,7 @@ function PositionsTable({
   onEditPurchaseDate,
   onEditPurchasePrice,
   onAddDividend,
+  onAddCoupon,
   onConfirmCoupon,
   onBondRedemption,
   receivedCoupons = {},
@@ -20,6 +23,7 @@ function PositionsTable({
   couponHistoryData = {},
   dividendHistoryData = {}
 }) {
+  const navigate = useNavigate()
   // Активная вкладка: 'all', 'stocks', 'bonds'
   const [activeTab, setActiveTab] = useState('all')
   const loadedCouponIdsRef = useRef(new Set())
@@ -121,16 +125,16 @@ function PositionsTable({
             <div className="d-flex justify-content-between">
               <div>
                 <div className="text-white small">Стоимость</div>
-                <div className="fw-bold">₽{stocksTotalValue.toFixed(2)}</div>
+                <div className="fw-bold">{formatNumber(stocksTotalValue)} ₽</div>
               </div>
               <div>
                 <div className="text-white small">Вложено</div>
-                <div className="fw-bold">₽{stocksTotalInvested.toFixed(2)}</div>
+                <div className="fw-bold">{formatNumber(stocksTotalInvested)} ₽</div>
               </div>
               <div>
                 <div className="text-white small">Прибыль/Убыток</div>
                 <div className={`fw-bold ${stocksTotalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {stocksTotalPnL >= 0 ? '+' : ''}₽{stocksTotalPnL.toFixed(2)} ({stocksTotalPnLPercent >= 0 ? '+' : ''}{stocksTotalPnLPercent.toFixed(2)}%)
+                  {stocksTotalPnL >= 0 ? '+' : ''}{formatNumber(stocksTotalPnL)} ₽ ({stocksTotalPnLPercent >= 0 ? '+' : ''}{stocksTotalPnLPercent.toFixed(2)}%)
                 </div>
               </div>
             </div>
@@ -139,21 +143,21 @@ function PositionsTable({
             <div className="d-flex justify-content-between">
               <div>
                 <div className="text-white small">Стоимость</div>
-                <div className="fw-bold">₽{bondsTotalValue.toFixed(2)}</div>
+                <div className="fw-bold">{formatNumber(bondsTotalValue)} ₽</div>
               </div>
               <div>
                 <div className="text-white small">Вложено</div>
-                <div className="fw-bold">₽{bondsTotalInvested.toFixed(2)}</div>
+                <div className="fw-bold">{formatNumber(bondsTotalInvested)} ₽</div>
               </div>
               <div>
                 <div className="text-white small">Прибыль/Убыток</div>
                 <div className={`fw-bold ${bondsTotalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {bondsTotalPnL >= 0 ? '+' : ''}₽{bondsTotalPnL.toFixed(2)} ({bondsTotalPnLPercent >= 0 ? '+' : ''}{bondsTotalPnLPercent.toFixed(2)}%)
+                  {bondsTotalPnL >= 0 ? '+' : ''}{formatNumber(bondsTotalPnL)} ₽ ({bondsTotalPnLPercent >= 0 ? '+' : ''}{bondsTotalPnLPercent.toFixed(2)}%)
                 </div>
               </div>
               <div>
                 <div className="text-white small">Купоны</div>
-                <div className="fw-bold text-success">₽{bondsTotalCoupons.toFixed(2)}</div>
+                <div className="fw-bold text-success">{formatNumber(bondsTotalCoupons)} ₽</div>
               </div>
             </div>
           )}
@@ -168,7 +172,14 @@ function PositionsTable({
             <th>Тип</th>
             <th>Валюта</th>
             <th>Кол-во</th>
-            <th>Цена покупки</th>
+            <th>
+              <div className="text-white-50">Цена</div>
+              <div>покупки</div>
+            </th>
+            <th>
+              <div className="text-white-50">Общая</div>
+              <div>сумма</div>
+            </th>
             <th>Текущая цена</th>
             <th>Рыночная стоимость</th>
             <th>Прибыль/Убыток</th>
@@ -212,24 +223,34 @@ function PositionsTable({
                   onClick={() => onEditPurchasePrice(position)}
                 >
                   <span className="text-info">
-                    {position.currency === 'RUB' ? '₽' : position.currency} {position.avgPrice.toFixed(2)}
+                    {position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.avgPrice)}
                   </span>
                   <i className="bi bi-pencil-fill ms-1" style={{ fontSize: '0.7rem' }}></i>
                 </Button>
               </td>
               <td>
-                {position.currency === 'RUB' ? '₽' : position.currency} {position.currentPrice.toFixed(2)}
-              </td>
-              <td>
-                <div>{position.currency === 'RUB' ? '₽' : position.currency} {position.marketValue.toFixed(2)}</div>
+                <div className="fw-bold">
+                  {position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.invested)}
+                </div>
                 {position.currency !== 'RUB' && (
                   <small className="text-muted">
-                    ≈ ₽{position.marketValueRub.toFixed(2)}
+                    ≈ {formatNumber(position.investedRub)} ₽
+                  </small>
+                )}
+              </td>
+              <td>
+                {position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.currentPrice)}
+              </td>
+              <td>
+                <div>{position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.marketValue)}</div>
+                {position.currency !== 'RUB' && (
+                  <small className="text-muted">
+                    ≈ {formatNumber(position.marketValueRub)} ₽
                   </small>
                 )}
               </td>
               <td className={position.pnl >= 0 ? 'text-success' : 'text-danger'}>
-                {position.pnl >= 0 ? '+' : ''}{position.currency === 'RUB' ? '₽' : position.currency} {position.pnl.toFixed(2)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
+                {position.pnl >= 0 ? '+' : ''}{position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.pnl)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
               </td>
               <td>
                 {(position.type === 'bond' || position.type === 'stock') ? (
@@ -343,7 +364,7 @@ function PositionsTable({
                   <td>
                     {position.type === 'bond' ? (
                       <span className="text-success">
-                        {position.currency === 'RUB' ? '₽' : position.currency} {position.totalCoupon.toFixed(2)}
+                        {position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.totalCoupon)}
                       </span>
                     ) : (
                       <span className="text-muted">—</span>
@@ -354,6 +375,14 @@ function PositionsTable({
 
               {/* Кнопки действий */}
               <td>
+                <Button
+                  variant="outline-info"
+                  size="sm"
+                  className="me-2"
+                  onClick={() => navigate(`/security/${position.type}/${position.securityId}`)}
+                >
+                  <i className="bi bi-info-circle"></i> Детали
+                </Button>
                 {position.type === 'stock' && (
                   <Button
                     variant="outline-success"
@@ -362,6 +391,16 @@ function PositionsTable({
                     onClick={() => onAddDividend(position)}
                   >
                     <i className="bi bi-plus-circle"></i> Дивиденд
+                  </Button>
+                )}
+                {position.type === 'bond' && (
+                  <Button
+                    variant="outline-success"
+                    size="sm"
+                    className="me-2"
+                    onClick={() => onAddCoupon(position)}
+                  >
+                    <i className="bi bi-plus-circle"></i> Купон
                   </Button>
                 )}
                 <Button

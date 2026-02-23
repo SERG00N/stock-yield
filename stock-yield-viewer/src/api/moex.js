@@ -5,7 +5,7 @@ const BASE_URL = 'https://iss.moex.com/iss'
  * @returns {Promise<Object>} - Курсы валют { USD: 75.5, EUR: 82.3, ... }
  */
 export async function fetchCurrencyRates() {
-  const { fetchAllCurrencyRates, currencyCache } = await import('./cbr')
+  const { currencyCache } = await import('./cbr')
   return currencyCache.getRates()
 }
 

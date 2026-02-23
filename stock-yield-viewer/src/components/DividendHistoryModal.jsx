@@ -3,12 +3,7 @@ import { Modal, Button, Table, Badge } from 'react-bootstrap'
 /**
  * Модальное окно для отображения истории полученных дивидендов
  */
-function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositions, stocks, dividendHistoryData }) {
-  // Сортировка по дате (новые сверху)
-  const sortedHistory = [...dividendHistory].sort((a, b) =>
-    new Date(b.date) - new Date(a.date)
-  )
-
+function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositions, dividendHistoryData }) {
   // Подсчёт общей суммы полученных дивидендов (из ручной истории)
   const totalDividends = dividendHistory.reduce((sum, item) => sum + item.dividendAmount, 0)
 

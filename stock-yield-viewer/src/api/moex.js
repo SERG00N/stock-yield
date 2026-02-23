@@ -343,6 +343,7 @@ export function daysUntilCoupon(nextCouponDate) {
 /**
  * Получение истории дивидендов для акции
  * Возвращает массив объектов с датой и суммой дивиденда
+ * Источники: MOEX API → Smart-Lab → Встроенная база
  */
 export async function fetchDividendHistory(secid, useBackup = true) {
   try {
@@ -355,14 +356,9 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     })
 
     if (!response.ok) {
-      // Пытаемся получить из резервного источника (Smart-Lab)
+      // Пытаемся получить из резервных источников
       if (useBackup) {
-        console.log(`MOEX API не вернул дивиденды для ${secid}, пробуем Smart-Lab...`)
-        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
-        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
-        if (smartLabDividends.length > 0) {
-          return smartLabDividends
-        }
+        return await getDividendsFromBackupSources(secid)
       }
       return []
     }
@@ -374,14 +370,9 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     const columns = data.dividends?.columns || []
 
     if (dividendsData.length === 0) {
-      // Пустой результат, пробуем Smart-Lab
+      // Пустой результат, пробуем резервные источники
       if (useBackup) {
-        console.log(`MOEX API вернул пустой список дивидендов для ${secid}, пробуем Smart-Lab...`)
-        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
-        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
-        if (smartLabDividends.length > 0) {
-          return smartLabDividends
-        }
+        return await getDividendsFromBackupSources(secid)
       }
       return []
     }
@@ -405,20 +396,48 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     return dividends
   } catch (err) {
     console.error(`Ошибка при получении истории дивидендов для ${secid}:`, err)
-    // Пытаемся получить из резервного источника
+    // Пытаемся получить из резервных источников
     if (useBackup) {
-      try {
-        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
-        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
-        if (smartLabDividends.length > 0) {
-          return smartLabDividends
-        }
-      } catch (smartLabErr) {
-        console.error('Smart-Lab также не вернул данные:', smartLabErr)
-      }
+      return await getDividendsFromBackupSources(secid)
     }
     return []
   }
+}
+
+/**
+ * Получение дивидендов из резервных источников
+ * @param {string} secid - Тикер акции
+ * @returns {Promise<Array>}
+ */
+async function getDividendsFromBackupSources(secid) {
+  console.log(`MOEX API не вернул дивиденды для ${secid}, пробуем резервные источники...`)
+  
+  // 1. Пробуем Smart-Lab
+  try {
+    const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
+    const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
+    if (smartLabDividends.length > 0) {
+      console.log(`Smart-Lab вернул ${smartLabDividends.length} дивидендов для ${secid}`)
+      return smartLabDividends
+    }
+  } catch (smartLabErr) {
+    console.log('Smart-Lab не вернул данные:', smartLabErr.message)
+  }
+  
+  // 2. Пробуем встроеннюю базу
+  try {
+    const { getDividendsFromDatabase } = await import('./dividendDatabase')
+    const databaseDividends = getDividendsFromDatabase(secid)
+    if (databaseDividends.length > 0) {
+      console.log(`Встроенная база вернула ${databaseDividends.length} дивидендов для ${secid}`)
+      return databaseDividends
+    }
+  } catch (dbErr) {
+    console.log('Встроенная база не вернула данные:', dbErr.message)
+  }
+  
+  console.log(`Дивиденды для ${secid} не найдены ни в одном источнике`)
+  return []
 }
 
 /**

@@ -16,38 +16,38 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
   const calculateDividendsByYearFromPositions = () => {
     const yearsDividends = {}
     const today = new Date()
-    
+
     portfolioPositions
       .filter(p => p.type === 'stock' && p.purchaseDate)
       .forEach(position => {
         const purchaseDate = new Date(position.purchaseDate)
         const quantity = position.quantity
-        
+
         // Проверяем, есть ли история дивидендов из API
         const apiHistory = dividendHistoryData[position.securityId] || []
-        
+
         if (apiHistory.length > 0) {
           // Используем реальные данные из API
           apiHistory.forEach(div => {
             if (!div.date) return
-            
+
             const divDate = new Date(div.date)
-            
+
             // Пропускаем дивиденды до даты покупки
             if (divDate < purchaseDate) return
             // Пропускаем будущие дивиденды
             if (divDate > today) return
-            
+
             const year = divDate.getFullYear()
             // Используем реальный размер дивиденда из API
             const dividendAmount = (div.amount || 0) * quantity
-            
+
             if (!yearsDividends[year]) {
               yearsDividends[year] = { amount: 0, count: 0, byStock: {} }
             }
             if (!yearsDividends[year].byStock[position.securityId]) {
-              yearsDividends[year].byStock[position.securityId] = { 
-                amount: 0, 
+              yearsDividends[year].byStock[position.securityId] = {
+                amount: 0,
                 count: 0,
                 ticker: position.ticker,
                 name: position.name
@@ -60,22 +60,81 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
           })
         }
       })
-    
+
     return yearsDividends
   }
 
   const calculatedDividendsByYear = calculateDividendsByYearFromPositions()
   const sortedYears = Object.keys(calculatedDividendsByYear).sort((a, b) => b - a)
 
+  // Создаём полную историю дивидендов из API + ручные
+  const getAllDividends = () => {
+    const allDividends = []
+    const today = new Date()
+
+    portfolioPositions
+      .filter(p => p.type === 'stock' && p.purchaseDate)
+      .forEach(position => {
+        const purchaseDate = new Date(position.purchaseDate)
+        const quantity = position.quantity
+        const apiHistory = dividendHistoryData[position.securityId] || []
+
+        // Добавляем дивиденды из API
+        apiHistory.forEach(div => {
+          if (!div.date) return
+          const divDate = new Date(div.date)
+
+          // Показываем только дивиденды после даты покупки и не будущие
+          if (divDate < purchaseDate || divDate > today) return
+
+          allDividends.push({
+            id: `api-${position.securityId}-${div.date}`,
+            date: div.date,
+            ticker: position.ticker,
+            name: position.name,
+            quantity,
+            dividendAmount: (div.amount || 0) * quantity,
+            amountPerShare: div.amount || 0,
+            type: div.type || 'common',
+            source: 'api',
+            period: div.period
+          })
+        })
+      })
+
+    // Добавляем ручные дивиденды
+    dividendHistory.forEach(item => {
+      allDividends.push({
+        ...item,
+        source: 'manual',
+        amountPerShare: item.dividendAmount / item.quantity
+      })
+    })
+
+    // Сортируем по дате (новые сверху)
+    return allDividends.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }
+
+  const allDividends = getAllDividends()
+
   // Форматирование даты
   const formatDate = (isoString) => {
     return new Date(isoString).toLocaleDateString('ru-RU', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     })
+  }
+
+  // Форматирование типа дивиденда
+  const formatDividendType = (type) => {
+    const types = {
+      common: 'Обыкн.',
+      preferred: 'Прив.',
+      quarterly: 'Кварт.',
+      annual: 'Годов.'
+    }
+    return types[type] || type
   }
 
   return (
@@ -86,21 +145,24 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {dividendHistory.length === 0 && sortedYears.length === 0 ? (
+        {allDividends.length === 0 && sortedYears.length === 0 ? (
           <div className="text-center py-4 text-muted">
             <i className="bi bi-inbox" style={{ fontSize: '3rem' }}></i>
             <p className="mt-3">История дивидендов пуста</p>
+            <p className="small">
+              Добавьте дивиденды вручную или дождитесь загрузки данных из API
+            </p>
           </div>
         ) : (
           <>
             <div className="mb-3 p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '8px' }}>
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <strong>Всего получено:</strong>
+                <strong>Всего получено (ручные):</strong>
                 <span className="text-success fw-bold" style={{ fontSize: '1.25rem' }}>₽{totalDividends.toFixed(2)}</span>
               </div>
               {sortedYears.length > 0 && (
                 <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                  <div className="text-white mb-2">По годам:</div>
+                  <div className="text-white mb-2">По годам (из API):</div>
                   {sortedYears.map(year => (
                     <div key={year} className="text-white mb-3">
                       <div className="d-flex justify-content-between align-items-center mb-2 pb-2" style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -132,39 +194,62 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
                 </div>
               )}
             </div>
-            <Table responsive hover striped>
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Бумага</th>
-                  <th>Количество</th>
-                  <th>Сумма дивиденда</th>
-                  <th>Тип</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedHistory.map(item => (
-                  <tr key={item.id}>
-                    <td>{formatDate(item.date)}</td>
-                    <td>
-                      <div className="fw-bold">{item.ticker}</div>
-                      <div className="text-muted small">{item.name}</div>
-                    </td>
-                    <td>{item.quantity}</td>
-                    <td className="text-success fw-bold">
-                      ₽{item.dividendAmount.toFixed(2)}
-                    </td>
-                    <td>
-                      {item.isInitialDividend ? (
-                        <Badge bg="info">При добавлении</Badge>
-                      ) : (
-                        <Badge bg="success">Получение</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+
+            {allDividends.length > 0 && (
+              <>
+                <h6 className="mb-3">
+                  <i className="bi bi-list-ul"></i> Все дивиденды
+                  <Badge bg="secondary" className="ms-2">{allDividends.length}</Badge>
+                </h6>
+                <Table responsive hover striped>
+                  <thead>
+                    <tr>
+                      <th>Дата</th>
+                      <th>Бумага</th>
+                      <th>Количество</th>
+                      <th>Сумма дивиденда</th>
+                      <th>За 1 акцию</th>
+                      <th>Период</th>
+                      <th>Тип</th>
+                      <th>Источник</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allDividends.map(item => (
+                      <tr key={item.id}>
+                        <td>{formatDate(item.date)}</td>
+                        <td>
+                          <div className="fw-bold">{item.ticker}</div>
+                          <div className="text-muted small">{item.name}</div>
+                        </td>
+                        <td>{item.quantity}</td>
+                        <td className="text-success fw-bold">
+                          ₽{item.dividendAmount.toFixed(2)}
+                        </td>
+                        <td className="text-info">
+                          ₽{item.amountPerShare?.toFixed(2)}
+                        </td>
+                        <td>{item.period || '—'}</td>
+                        <td>
+                          <Badge bg={item.type === 'preferred' ? 'purple' : 'info'}>
+                            {formatDividendType(item.type)}
+                          </Badge>
+                        </td>
+                        <td>
+                          {item.source === 'api' ? (
+                            <Badge bg="secondary">API</Badge>
+                          ) : item.isInitialDividend ? (
+                            <Badge bg="info">При добавлении</Badge>
+                          ) : (
+                            <Badge bg="success">Ручной</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
           </>
         )}
       </Modal.Body>

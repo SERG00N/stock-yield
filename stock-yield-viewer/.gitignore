@@ -22,3 +22,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright MCP (скриншоты и тестовые файлы)
+.playwright-mcp/
+*.png
+*.jpg
+*.jpeg
+*.csv
+# Исключение для package-lock.json
+!package-lock.json
+
+# Временные файлы
+*.tmp
+*.bak

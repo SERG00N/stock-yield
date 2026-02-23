@@ -284,7 +284,7 @@ body {
 }
 
 .table-name {
-  color: var(--text-primary);
+  color: #fff;
   font-size: 0.95rem;
   font-weight: 500;
 }

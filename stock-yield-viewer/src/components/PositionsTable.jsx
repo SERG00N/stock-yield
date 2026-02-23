@@ -142,7 +142,7 @@ function PositionsTable({
                 <th>Дата погашения</th>
                 <th>До погашения</th>
                 <th>Купон</th>
-                <th>Раз в</th>
+                <th>Через</th>
                 <th>До купона</th>
                 <th>Купоны</th>
               </>

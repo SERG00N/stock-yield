@@ -520,3 +520,17 @@ body {
   font-size: 0.8rem;
   margin-bottom: 0;
 }
+
+/* Security Icon */
+.security-icon {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.security-icon:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.security-icon-name {
+  color: var(--text-primary);
+}

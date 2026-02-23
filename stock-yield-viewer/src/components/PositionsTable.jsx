@@ -3,6 +3,7 @@ import { Table, Button, Badge, Nav } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../api/moex'
 import { formatNumber } from '../utils/format'
+import SecurityIcon from './SecurityIcon'
 
 /**
  * Таблица позиций портфеля с разделением на акции и облигации
@@ -201,8 +202,13 @@ function PositionsTable({
           {sortedPositions.map(position => (
             <tr key={position.id}>
               <td>
-                <div className="table-ticker">{position.ticker}</div>
-                <div className="table-name">{position.name}</div>
+                <div className="d-flex align-items-center gap-2">
+                  <SecurityIcon ticker={position.ticker} size={32} />
+                  <div>
+                    <div className="table-ticker">{position.ticker}</div>
+                    <div className="table-name">{position.name}</div>
+                  </div>
+                </div>
               </td>
               <td>
                 <span className={`badge ${position.type === 'bond' ? 'bg-info' : 'bg-primary'}`}>

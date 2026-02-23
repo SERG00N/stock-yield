@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Container, Row, Col, Button, Card, Table } from 'react-bootstrap'
+import { Container, Row, Col, Button, Card } from 'react-bootstrap'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useStocks } from '../hooks/useStocks'
 import { fetchBonds, transformBondData, formatCouponPeriod, fetchNextCouponDate, daysUntilCoupon, daysUntilMaturity, formatDate, fetchCouponHistory, fetchDividendHistory } from '../api/moex'
@@ -10,6 +10,7 @@ import DividendHistoryModal from '../components/DividendHistoryModal'
 import EditPurchaseDateModal from '../components/EditPurchaseDateModal'
 import EditPurchasePriceModal from '../components/EditPurchasePriceModal'
 import ExportImportModal from '../components/ExportImportModal'
+import PositionsTable from '../components/PositionsTable'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorDisplay from '../components/ErrorDisplay'
 import Header from '../components/Header'
@@ -27,14 +28,14 @@ function PortfolioPage() {
   const [showEditDateModal, setShowEditDateModal] = useState(false)
   const [editingPosition, setEditingPosition] = useState(null)
   const [editingPricePosition, setEditingPricePosition] = useState(null)
-  const [securityType, setSecurityType] = useState('stock') // 'stock' или 'bond'
+  const [securityType, setSecurityType] = useState('stock')
   const [loadingBonds, setLoadingBonds] = useState(true)
   const [bondsError, setBondsError] = useState(null)
-  const [couponDates, setCouponDates] = useState({}) // { [secid]: daysUntilCoupon }
-  const [receivedCoupons, setReceivedCoupons] = useState({}) // { [secid]: true } - подтверждённые купоны
-  const [couponHistoryData, setCouponHistoryData] = useState({}) // { [secid]: [{date, value}] }
-  const [dividendHistoryData, setDividendHistoryData] = useState({}) // { [secid]: [{date, amount}] }
-  const loadedCouponIdsRef = useRef(new Set()) // Отслеживание загруженных ID
+  const [couponDates, setCouponDates] = useState({})
+  const [receivedCoupons, setReceivedCoupons] = useState({})
+  const [couponHistoryData, setCouponHistoryData] = useState({})
+  const [dividendHistoryData, setDividendHistoryData] = useState({})
+  const loadedCouponIdsRef = useRef(new Set())
 
   // Обработка подтверждения получения купона
   const handleConfirmCoupon = (position) => {
@@ -386,203 +387,23 @@ function PortfolioPage() {
         {/* Таблица позиций */}
         <Row className="w-100 mx-0">
           <Col fluid="xl">
-            <div className="stock-table-container">
-              <h3><i className="bi bi-list-ul"></i> Позиции</h3>
-              {portfolio.length === 0 ? (
-                <div className="text-center py-5 text-muted">
-                  <i className="bi bi-inbox" style={{ fontSize: '3rem' }}></i>
-                  <p className="mt-3">Портфель пуст. Добавьте первые бумаги!</p>
-                </div>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>Бумага</th>
-                      <th>Тип</th>
-                      <th>Валюта</th>
-                      <th>Количество</th>
-                      <th>Цена покупки</th>
-                      <th>Текущая цена</th>
-                      <th>Рыночная стоимость</th>
-                      <th>Прибыль/Убыток</th>
-                      <th>Дата покупки</th>
-                      <th>Дата погашения</th>
-                      <th>До погашения</th>
-                      <th>Купон (шт)</th>
-                      <th>Периодичность</th>
-                      <th>До купона</th>
-                      <th>Купоны (сумма)</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {positionsWithData.map(position => (
-                      <tr key={position.id}>
-                        <td>
-                          <div className="table-ticker">{position.ticker}</div>
-                          <div className="table-name">{position.name}</div>
-                        </td>
-                        <td>
-                          <span className={`badge ${position.type === 'bond' ? 'bg-info' : 'bg-primary'}`}>
-                            {position.type === 'bond' ? 'Облигация' : 'Акция'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge ${position.currency === 'RUB' ? 'bg-secondary' : 'bg-warning text-dark'}`}>
-                            {position.currency}
-                          </span>
-                        </td>
-                        <td>{position.quantity}</td>
-                        <td>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="p-0"
-                            onClick={() => handleEditPurchasePrice(position)}
-                          >
-                            <span className="text-info">
-                              {position.currency === 'RUB' ? '₽' : position.currency} {position.avgPrice.toFixed(2)}
-                            </span>
-                            <i className="bi bi-pencil-fill ms-1" style={{ fontSize: '0.7rem' }}></i>
-                          </Button>
-                        </td>
-                        <td>{position.currency === 'RUB' ? '₽' : position.currency} {position.currentPrice.toFixed(2)}</td>
-                        <td>
-                          <div>{position.currency === 'RUB' ? '₽' : position.currency} {position.marketValue.toFixed(2)}</div>
-                          {position.currency !== 'RUB' && (
-                            <small className="text-muted">
-                              ≈ ₽{position.marketValueRub.toFixed(2)}
-                            </small>
-                          )}
-                        </td>
-                        <td className={position.pnl >= 0 ? 'text-success' : 'text-danger'}>
-                          {position.pnl >= 0 ? '+' : ''}{position.currency === 'RUB' ? '₽' : position.currency} {position.pnl.toFixed(2)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
-                        </td>
-                        <td>
-                          {(position.type === 'bond' || position.type === 'stock') ? (
-                            <Button
-                              variant="link"
-                              size="sm"
-                              className="p-0"
-                              onClick={() => handleEditPurchaseDate(position)}
-                            >
-                              <span className="text-info">
-                                {position.purchaseDate ? formatDate(position.purchaseDate) : 'Добавить'}
-                              </span>
-                              <i className="bi bi-pencil-fill ms-1" style={{ fontSize: '0.7rem' }}></i>
-                            </Button>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'bond' ? (
-                            <span className={position.maturityDate ? '' : 'text-muted'}>
-                              {position.maturityDate ? formatDate(position.maturityDate) : '—'}
-                            </span>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'bond' ? (
-                            position.daysToMaturity !== null ? (
-                              <span className={position.daysToMaturity <= 30 ? 'text-danger' : position.daysToMaturity <= 90 ? 'text-warning' : 'text-success'}>
-                                {position.daysToMaturity} дн.
-                              </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'bond' ? (
-                            <span className="text-info">{formatCouponPeriod(position.couponPeriod)}</span>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'bond' ? (
-                            receivedCoupons[position.securityId] ? (
-                              // Купон подтверждён - показываем кнопку загрузки новых данных
-                              <Button
-                                variant="outline-success"
-                                size="sm"
-                                onClick={() => {
-                                  setReceivedCoupons(prev => ({
-                                    ...prev,
-                                    [position.securityId]: undefined
-                                  }))
-                                  setCouponDates(prev => ({
-                                    ...prev,
-                                    [position.securityId]: undefined
-                                  }))
-                                  loadedCouponIdsRef.current.delete(position.securityId)
-                                }}
-                              >
-                                <i className="bi bi-arrow-clockwise"></i>
-                              </Button>
-                            ) : position.daysToCoupon === 0 ? (
-                              // 0 дней - показываем кнопку подтверждения и красный таймер
-                              <div className="d-flex align-items-center gap-2">
-                                <span className="text-danger fw-bold">0 дн.</span>
-                                <Button
-                                  variant="success"
-                                  size="sm"
-                                  onClick={() => handleConfirmCoupon(position)}
-                                >
-                                  <i className="bi bi-check-lg"></i> Получить купон
-                                </Button>
-                              </div>
-                            ) : position.daysToCoupon !== undefined ? (
-                              <span className={position.daysToCoupon <= 7 ? 'text-danger' : 'text-info'}>
-                                {position.daysToCoupon} дн.
-                              </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'bond' ? (
-                            <span className="text-success">₽{position.totalCoupon.toFixed(2)}</span>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {position.type === 'stock' && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              className="me-2"
-                              onClick={() => {
-                                setAddingDividendPosition(position)
-                                setShowAddDividendModal(true)
-                              }}
-                            >
-                              <i className="bi bi-plus-circle"></i> Дивиденд
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => removePosition(position.id)}
-                          >
-                            <i className="bi bi-trash"></i>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </div>
+            <PositionsTable
+              positions={positionsWithData}
+              bonds={bonds}
+              onRemovePosition={removePosition}
+              onEditPurchaseDate={handleEditPurchaseDate}
+              onEditPurchasePrice={(position) => setEditingPricePosition(position)}
+              onAddDividend={(position) => {
+                setAddingDividendPosition(position)
+                setShowAddDividendModal(true)
+              }}
+              onConfirmCoupon={handleConfirmCoupon}
+              receivedCoupons={receivedCoupons}
+              couponDates={couponDates}
+              setCouponDates={setCouponDates}
+              couponHistoryData={couponHistoryData}
+              dividendHistoryData={dividendHistoryData}
+            />
           </Col>
         </Row>
 

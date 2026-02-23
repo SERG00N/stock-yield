@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Table, Button, Badge, Nav } from 'react-bootstrap'
-import { formatDate, formatCouponPeriod } from '../api/moex'
+import { formatDate } from '../api/moex'
 
 /**
  * Таблица позиций портфеля с разделением на акции и облигации

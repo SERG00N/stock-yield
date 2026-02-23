@@ -353,7 +353,7 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Стоимость портфеля</Card.Title>
+                <Card.Title>Стоимость портфеля</Card.Title>
                 <Card.Text className="summary-value">₽{totalValue.toFixed(2)}</Card.Text>
               </Card.Body>
             </Card>
@@ -361,7 +361,7 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Вложено</Card.Title>
+                <Card.Title>Вложено</Card.Title>
                 <Card.Text className="summary-value">₽{totalInvested.toFixed(2)}</Card.Text>
               </Card.Body>
             </Card>
@@ -369,7 +369,7 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Прибыль/Убыток</Card.Title>
+                <Card.Title>Прибыль/Убыток</Card.Title>
                 <Card.Text className={`summary-value ${totalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                   {totalPnL >= 0 ? '+' : ''}₽{totalPnL.toFixed(2)} ({totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
                 </Card.Text>
@@ -379,7 +379,7 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Купоны (облигации)</Card.Title>
+                <Card.Title>Купоны (облигации)</Card.Title>
                 <Card.Text className={`summary-value ${totalCoupons > 0 ? 'text-success' : ''}`}>
                   ₽{totalCoupons.toFixed(2)}
                 </Card.Text>
@@ -389,7 +389,7 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Получено купонов</Card.Title>
+                <Card.Title>Получено купонов</Card.Title>
                 <Card.Text className={`summary-value ${totalReceivedCoupons > 0 ? 'text-success' : ''}`}>
                   ₽{totalReceivedCoupons.toFixed(2)}
                 </Card.Text>
@@ -399,11 +399,11 @@ function PortfolioPage() {
           <Col md={3}>
             <Card className="portfolio-summary">
               <Card.Body>
-                <Card.Title className="text-muted">Курсы валют (ЦБ РФ)</Card.Title>
+                <Card.Title>Курсы валют (ЦБ РФ)</Card.Title>
                 <Card.Text className="summary-value" style={{ fontSize: '1rem' }}>
                   <div>USD: {currencyRates.USD?.toFixed(2)} ₽</div>
                   <div>EUR: {currencyRates.EUR?.toFixed(2)} ₽</div>
-                  <div className="text-muted" style={{ fontSize: '0.85rem' }}>
+                  <div className="text-white-50" style={{ fontSize: '0.85rem' }}>
                     {currencyRates.lastUpdate ? new Date(currencyRates.lastUpdate).toLocaleDateString('ru-RU') : ''}
                   </div>
                 </Card.Text>

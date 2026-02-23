@@ -32,7 +32,7 @@ function PositionsTable({
   })
 
   // Сортировка для вкладок "Облигации" и "Все"
-  const sortedPositions = activeTab !== 'stocks' 
+  const sortedPositions = activeTab !== 'stocks'
     ? [...filteredPositions].sort((a, b) => {
         // Сортируем только облигации
         if (a.type !== 'bond' || b.type !== 'bond') return 0
@@ -52,9 +52,16 @@ function PositionsTable({
           const match = String(period).match(/(\d+)/)
           return match ? parseInt(match[1]) : 9999
         }
-        
+
         const aPeriod = parsePeriod(a.couponPeriod)
         const bPeriod = parsePeriod(b.couponPeriod)
+
+        // Если периоды одинаковые, сортируем по дням до купона (кто ближе)
+        if (aPeriod === bPeriod) {
+          const aDays = a.daysToCoupon !== null ? a.daysToCoupon : 9999
+          const bDays = b.daysToCoupon !== null ? b.daysToCoupon : 9999
+          return aDays - bDays
+        }
 
         return aPeriod - bPeriod
       })

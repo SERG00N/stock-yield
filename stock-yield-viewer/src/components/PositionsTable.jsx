@@ -124,13 +124,13 @@ function PositionsTable({
       )}
 
       {/* Таблица позиций */}
-      <Table responsive hover>
+      <Table responsive hover className="positions-table">
         <thead>
           <tr>
             <th>Бумага</th>
             <th>Тип</th>
             <th>Валюта</th>
-            <th>Количество</th>
+            <th>Кол-во</th>
             <th>Цена покупки</th>
             <th>Текущая цена</th>
             <th>Рыночная стоимость</th>
@@ -140,10 +140,10 @@ function PositionsTable({
               <>
                 <th>Дата погашения</th>
                 <th>До погашения</th>
-                <th>Купон (шт)</th>
-                <th>Периодичность</th>
+                <th>Купон</th>
+                <th>Раз в</th>
                 <th>До купона</th>
-                <th>Купоны (сумма)</th>
+                <th>Купоны</th>
               </>
             )}
             <th></th>
@@ -239,7 +239,9 @@ function PositionsTable({
                   </td>
                   <td>
                     {position.type === 'bond' ? (
-                      <span className="text-info">{formatCouponPeriod(position.couponPeriod)}</span>
+                      <span className="text-info">
+                        {position.couponPeriod || '—'}
+                      </span>
                     ) : (
                       <span className="text-muted">—</span>
                     )}

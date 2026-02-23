@@ -179,13 +179,67 @@ body {
 }
 
 /* Stock Table */
-.stock-table-container {
+.stock-table-container,
+.positions-table {
   background: #1a4d3e;
   border-radius: 12px;
   padding: 1rem;
   border: 1px solid var(--border-color);
   overflow-x: auto;
   width: 100%;
+}
+
+.positions-table table {
+  font-size: 0.85rem;
+}
+
+.positions-table th {
+  white-space: nowrap;
+  padding: 0.5rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.positions-table td {
+  padding: 0.5rem 0.4rem;
+  vertical-align: middle;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+/* Узкие колонки */
+.positions-table th:nth-child(4),    /* Кол-во */
+.positions-table td:nth-child(4) {
+  max-width: 50px;
+  text-align: center;
+}
+
+.positions-table th:nth-child(3),    /* Валюта */
+.positions-table td:nth-child(3) {
+  max-width: 60px;
+  text-align: center;
+}
+
+.positions-table th:nth-child(12),   /* Раз в */
+.positions-table td:nth-child(12) {
+  max-width: 50px;
+  text-align: center;
+}
+
+.positions-table th:nth-child(13),   /* До купона */
+.positions-table td:nth-child(13) {
+  max-width: 70px;
+  text-align: center;
+}
+
+.positions-table th:nth-child(14),   /* Купоны */
+.positions-table td:nth-child(14) {
+  max-width: 80px;
+  text-align: right;
 }
 
 .stock-table-container h3 {

@@ -36,18 +36,26 @@ function PositionsTable({
     ? [...filteredPositions].sort((a, b) => {
         // Сортируем только облигации
         if (a.type !== 'bond' || b.type !== 'bond') return 0
-        
+
         // Сначала те, у которых 0 дней до купона (неподтверждённые)
         const aIsZeroCoupon = a.daysToCoupon === 0 && !receivedCoupons[a.securityId]
         const bIsZeroCoupon = b.daysToCoupon === 0 && !receivedCoupons[b.securityId]
-        
+
         if (aIsZeroCoupon && !bIsZeroCoupon) return -1
         if (!aIsZeroCoupon && bIsZeroCoupon) return 1
-        
+
         // Затем по возрастанию "Через" (период между купонами)
-        const aPeriod = a.couponPeriod || 9999
-        const bPeriod = b.couponPeriod || 9999
+        // Преобразуем строку "30 дн." в число 30
+        const parsePeriod = (period) => {
+          if (!period) return 9999
+          if (typeof period === 'number') return period
+          const match = String(period).match(/(\d+)/)
+          return match ? parseInt(match[1]) : 9999
+        }
         
+        const aPeriod = parsePeriod(a.couponPeriod)
+        const bPeriod = parsePeriod(b.couponPeriod)
+
         return aPeriod - bPeriod
       })
     : filteredPositions

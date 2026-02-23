@@ -283,14 +283,10 @@ body {
   background: rgba(233, 69, 96, 0.05);
 }
 
-.table-ticker {
-  font-weight: 700;
-  color: var(--accent);
-}
-
 .table-name {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .table-price {

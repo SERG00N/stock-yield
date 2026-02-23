@@ -74,7 +74,7 @@ function CouponNotifications({ positions, couponDates, receivedCoupons }) {
             <div className="d-flex align-items-center gap-3">
               <i className={`bi bi-${notification.daysToCoupon === 0 ? 'exclamation-triangle' : 'bell'} fs-5`}></i>
               <div>
-                <span className="fw-semibold">{notification.ticker}</span>
+                <span className="fw-semibold">{notification.name}</span>
                 <span className="mx-2 text-muted">•</span>
                 <span className="text-nowrap">
                   {notification.daysToCoupon === 0 ? (

@@ -84,15 +84,15 @@ function PositionsTable({
           {activeTab === 'stocks' && (
             <div className="d-flex justify-content-between">
               <div>
-                <div className="text-muted small">Стоимость</div>
+                <div className="text-white small">Стоимость</div>
                 <div className="fw-bold">₽{stocksTotalValue.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-muted small">Вложено</div>
+                <div className="text-white small">Вложено</div>
                 <div className="fw-bold">₽{stocksTotalInvested.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-muted small">Прибыль/Убыток</div>
+                <div className="text-white small">Прибыль/Убыток</div>
                 <div className={`fw-bold ${stocksTotalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                   {stocksTotalPnL >= 0 ? '+' : ''}₽{stocksTotalPnL.toFixed(2)} ({stocksTotalPnLPercent >= 0 ? '+' : ''}{stocksTotalPnLPercent.toFixed(2)}%)
                 </div>
@@ -102,21 +102,21 @@ function PositionsTable({
           {activeTab === 'bonds' && (
             <div className="d-flex justify-content-between">
               <div>
-                <div className="text-muted small">Стоимость</div>
+                <div className="text-white small">Стоимость</div>
                 <div className="fw-bold">₽{bondsTotalValue.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-muted small">Вложено</div>
+                <div className="text-white small">Вложено</div>
                 <div className="fw-bold">₽{bondsTotalInvested.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-muted small">Прибыль/Убыток</div>
+                <div className="text-white small">Прибыль/Убыток</div>
                 <div className={`fw-bold ${bondsTotalPnL >= 0 ? 'text-success' : 'text-danger'}`}>
                   {bondsTotalPnL >= 0 ? '+' : ''}₽{bondsTotalPnL.toFixed(2)} ({bondsTotalPnLPercent >= 0 ? '+' : ''}{bondsTotalPnLPercent.toFixed(2)}%)
                 </div>
               </div>
               <div>
-                <div className="text-muted small">Купоны</div>
+                <div className="text-white small">Купоны</div>
                 <div className="fw-bold text-success">₽{bondsTotalCoupons.toFixed(2)}</div>
               </div>
             </div>

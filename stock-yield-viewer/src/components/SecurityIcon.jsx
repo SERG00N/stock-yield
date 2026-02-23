@@ -1,14 +1,14 @@
 /**
  * Компонент иконки ценной бумаги
- * Генерирует цветную иконку с первыми буквами тикера
+ * Генерирует цветную иконку с первыми буквами тикера или названия
  */
 
 /**
- * Генерация цвета на основе тикера
- * @param {string} ticker - Тикер бумаги
+ * Генерация цвета на основе строки
+ * @param {string} str - Строка для генерации цвета
  * @returns {string} - HEX цвет
  */
-function getColorFromTicker(ticker) {
+function getColorFromString(str) {
   const colors = [
     '#00b894', // зелёный
     '#0984e3', // синий
@@ -26,34 +26,67 @@ function getColorFromTicker(ticker) {
 
   // Генерируем индекс на основе суммы кодов символов
   let hash = 0
-  for (let i = 0; i < ticker.length; i++) {
-    hash = hash + ticker.charCodeAt(i)
+  for (let i = 0; i < str.length; i++) {
+    hash = hash + str.charCodeAt(i)
   }
   return colors[hash % colors.length]
 }
 
 /**
- * Получение инициалов из тикера
- * @param {string} ticker - Тикер
+ * Получение инициалов из строки
+ * @param {string} str - Строка (тикер или название)
+ * @param {boolean} isTicker - Это тикер или название
  * @returns {string} - Инициалы (1-2 буквы)
  */
-function getInitials(ticker) {
-  if (!ticker) return ''
+function getInitials(str, isTicker = true) {
+  if (!str) return ''
   
-  // Убираем цифры и оставляем буквы
-  const letters = ticker.replace(/[^A-ZА-Я]/gi, '')
-  
-  if (letters.length === 0) {
-    // Если нет букв, берём первые 2 символа
-    return ticker.substring(0, 2).toUpperCase()
+  if (isTicker) {
+    // Для тикеров: убираем цифры и оставляем буквы
+    const letters = str.replace(/[^A-ZА-Я]/gi, '')
+    
+    if (letters.length === 0) {
+      // Если нет букв, берём первые 2 символа
+      return str.substring(0, 2).toUpperCase()
+    }
+    
+    if (letters.length === 1) {
+      return letters.toUpperCase()
+    }
+    
+    // Берём первые 2 буквы
+    return letters.substring(0, 2).toUpperCase()
+  } else {
+    // Для названий: берём первые буквы первых двух слов
+    const words = str.trim().split(/\s+/).filter(w => w.length > 0)
+    
+    if (words.length === 0) return ''
+    
+    if (words.length === 1) {
+      // Одно слово: берём первые 2 буквы
+      const firstWord = words[0].replace(/[^A-ZА-ЯA-Z]/gi, '')
+      return firstWord.substring(0, 2).toUpperCase()
+    }
+    
+    // Два и более слов: берём первые буквы первых двух слов
+    const firstLetter1 = words[0].charAt(0).toUpperCase()
+    const firstLetter2 = words[1].charAt(0).toUpperCase()
+    
+    // Проверяем, что это буквы
+    const isLetter1 = /[A-ZА-Я]/i.test(firstLetter1)
+    const isLetter2 = /[A-ZА-Я]/i.test(firstLetter2)
+    
+    if (isLetter1 && isLetter2) {
+      return firstLetter1 + firstLetter2
+    } else if (isLetter1) {
+      return firstLetter1
+    } else if (isLetter2) {
+      return firstLetter2
+    } else {
+      // Если нет букв, берём первые 2 символа из первого слова
+      return words[0].substring(0, 2).toUpperCase()
+    }
   }
-  
-  if (letters.length === 1) {
-    return letters.toUpperCase()
-  }
-  
-  // Берём первые 2 буквы
-  return letters.substring(0, 2).toUpperCase()
 }
 
 /**
@@ -61,6 +94,7 @@ function getInitials(ticker) {
  * @param {Object} props
  * @param {string} props.ticker - Тикер бумаги
  * @param {string} props.name - Название бумаги (опционально)
+ * @param {string} props.type - Тип бумаги: 'stock' | 'bond'
  * @param {number} props.size - Размер иконки в пикселях (по умолчанию 32)
  * @param {string} props.className - Дополнительный CSS класс
  * @param {boolean} props.showName - Показывать название рядом с иконкой
@@ -68,12 +102,18 @@ function getInitials(ticker) {
 function SecurityIcon({ 
   ticker = 'UNK', 
   name, 
+  type = 'stock',
   size = 32, 
   className = '',
   showName = false 
 }) {
-  const bgColor = getColorFromTicker(ticker)
-  const initials = getInitials(ticker)
+  // Для облигаций используем название, для акций - тикер
+  const useName = type === 'bond' && name
+  const displayStr = useName ? name : ticker
+  const isTicker = !useName
+  
+  const bgColor = getColorFromString(displayStr)
+  const initials = getInitials(displayStr, isTicker)
   
   const style = {
     display: 'inline-flex',

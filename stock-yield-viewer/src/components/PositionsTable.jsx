@@ -203,7 +203,7 @@ function PositionsTable({
             <tr key={position.id}>
               <td>
                 <div className="d-flex align-items-center gap-2">
-                  <SecurityIcon ticker={position.ticker} size={32} />
+                  <SecurityIcon ticker={position.ticker} name={position.name} type={position.type} size={32} />
                   <div>
                     <div className="table-ticker">{position.ticker}</div>
                     <div className="table-name">{position.name}</div>

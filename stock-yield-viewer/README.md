@@ -1,16 +1,182 @@
-# React + Vite
+# StockYield — Трекер доходности акций и облигаций Московской биржи
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-приложение для управления инвестиционным портфелем, отслеживания купонных выплат и дивидендов по бумагам Московской биржи.
 
-Currently, two official plugins are available:
+## 🚀 Возможности
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Для акций
+- ✅ Просмотр текущих цен и доходности
+- ✅ Добавление позиций в портфель с указанием даты покупки
+- ✅ Отслеживание дивидендов
+- ✅ Ручное добавление полученных дивидендов
+- ✅ История дивидендов с группировкой по годам
 
-## React Compiler
+### Для облигаций
+- ✅ Просмотр купонной доходности
+- ✅ Добавление позиций в портфель
+- ✅ Автоматический расчёт полученных купонов на основе даты покупки
+- ✅ Ручной ввод купонов для облигаций с плавающей ставкой
+- ✅ История купонов с группировкой по годам
+- ✅ Отображение даты следующего купона
+- ✅ Уведомления о приближении купонной даты (≤7 дней)
+- ✅ Дата погашения и дни до погашения
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Общие функции
+- ✅ Экспорт портфеля в JSON (полный, с историей)
+- ✅ Экспорт портфеля в CSV (только позиции)
+- ✅ Импорт портфеля из JSON/CSV
+- ✅ Тёмная зелёная тема
+- ✅ Адаптивный дизайн
+- ✅ Сохранение данных в localStorage
 
-## Expanding the ESLint configuration
+## 📦 Технологии
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Компонент | Технология |
+|-----------|------------|
+| **Frontend** | React 19.2, Vite 7 |
+| **Роутинг** | React Router DOM 7 |
+| **UI** | Bootstrap 5, React Bootstrap |
+| **Иконки** | Bootstrap Icons |
+| **Данные** | MOEX ISS API (бесплатно, без ключей) |
+| **Хранение** | localStorage |
+
+## 🛠️ Установка и запуск
+
+### Требования
+- Node.js 18+
+- npm 9+
+
+### Установка зависимостей
+```bash
+npm install
+```
+
+### Запуск разработки
+```bash
+npm run dev
+```
+Приложение откроется на http://localhost:5173
+
+### Сборка для продакшена
+```bash
+npm run build
+```
+
+### Проверка кода
+```bash
+npm run lint
+```
+
+## 📁 Структура проекта
+
+```
+stock-yield-viewer/
+├── src/
+│   ├── api/
+│   │   └── moex.js              # MOEX API клиент
+│   ├── components/
+│   │   ├── AddToPortfolioModal.jsx
+│   │   ├── AddCouponPaymentModal.jsx
+│   │   ├── AddDividendModal.jsx
+│   │   ├── CouponHistoryModal.jsx
+│   │   ├── DividendHistoryModal.jsx
+│   │   ├── ExportImportModal.jsx
+│   │   ├── EditPurchaseDateModal.jsx
+│   │   ├── EditPurchasePriceModal.jsx
+│   │   ├── Header.jsx
+│   │   ├── LoadingSpinner.jsx
+│   │   └── ErrorDisplay.jsx
+│   ├── hooks/
+│   │   ├── usePortfolio.js      # Управление портфелем
+│   │   └── useStocks.js         # Получение акций
+│   ├── pages/
+│   │   ├── StocksPage.jsx       # Страница акций
+│   │   └── PortfolioPage.jsx    # Страница портфеля
+│   ├── App.css                  # Стили (тёмная тема)
+│   ├── App.jsx
+│   ├── index.css
+│   └── main.jsx
+├── public/
+├── package.json
+├── vite.config.js
+└── README.md
+```
+
+## 🔌 API Endpoints (MOEX ISS)
+
+| Данные | Endpoint |
+|--------|----------|
+| Акции | `/engines/stock/markets/shares/boards/TQBR/securities.json` |
+| Облигации | `/engines/stock/markets/bonds/boards/TQCB/securities.json` |
+| Купоны | `/engines/stock/markets/bonds/securities/{SECID}/coupons.json` |
+| Дивиденды | `/engines/stock/markets/shares/securities/{SECID}/dividends.json` |
+
+## 📊 Форматы экспорта
+
+### JSON (полный экспорт)
+```json
+{
+  "version": "1.0",
+  "exportDate": "2026-02-22T...",
+  "portfolio": [...],
+  "couponHistory": [...],
+  "dividendHistory": [...]
+}
+```
+
+### CSV (только позиции)
+```csv
+ID,Тип,Тикер,Название,Количество,Средняя цена,Дата покупки,Получено купонов,Получено дивидендов
+1234567890,bond,RU000A108Z93,"ВТБ Лизинг 001Р-МБ-01",20,1000.00,2026-02-22,0,0
+```
+
+## 🎨 Темы оформления
+
+Приложение использует тёмную зелёную тему:
+
+```css
+--bg-primary: #0d1b1e      /* Основной фон */
+--bg-secondary: #1b3a2b    /* Вторичный фон */
+--bg-card: #1a4d3e         /* Фон карточек */
+--accent: #00b894          /* Акцентный цвет */
+--success: #00d26a         /* Успех */
+--danger: #f8312f          /* Ошибка/убыток */
+```
+
+## 📝 Планы развития
+
+### Ближайшие задачи
+- [ ] Автоматическое обновление таймера "До купона"
+- [ ] Push-уведомления о приближении купонной даты
+- [ ] Страница с деталями бумаги (свечи, история цен)
+- [ ] Графики доходности (Recharts/Chart.js)
+
+### Будущие улучшения
+- [ ] Синхронизация портфеля с сервером
+- [ ] Поддержка нескольких валют
+- [ ] Email/SMS уведомления о купонах
+- [ ] История изменения цены покупки
+- [ ] Сравнение с эталонными индексами
+
+## ⚠️ Известные ограничения
+
+- MOEX API не всегда возвращает `COUPONVALUE` для всех облигаций
+- Для некоторых облигаций дата следующего купона может отсутствовать
+- MOEX API не возвращает историю дивидендов для всех акций (например, SBER)
+- Требуется полная перезагрузка Vite (`--force`) при изменении компонентов
+
+## 📄 Лицензия
+
+Проект создан в образовательных целях.
+
+## 🤝 Вклад в проект
+
+1. Создайте ветку для фичи (`git checkout -b feature/amazing-feature`)
+2. Закоммитьте изменения (`git commit -m 'feat: описание'`)
+3. Отправьте в репозиторий (`git push origin feature/amazing-feature`)
+4. Создайте Pull Request
+
+---
+
+**Дата обновления:** 22 февраля 2026 г.  
+**Версия:** 1.0.0

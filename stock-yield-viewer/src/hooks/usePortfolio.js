@@ -121,6 +121,7 @@ export function importPortfolioCSV(csvText) {
  */
 export function usePortfolio() {
   const [portfolio, setPortfolio] = useState([])
+  const [redeemedBonds, setRedeemedBonds] = useState([])
   const [couponHistory, setCouponHistory] = useState([])
   const [dividendHistory, setDividendHistory] = useState([])
   const [currencyRates, setCurrencyRates] = useState({ RUB: 1, USD: 75, EUR: 82 })
@@ -132,6 +133,11 @@ export function usePortfolio() {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         setPortfolio(JSON.parse(saved))
+      }
+      // Загрузка погашенных облигаций
+      const savedRedeemed = localStorage.getItem('redeemed-bonds')
+      if (savedRedeemed) {
+        setRedeemedBonds(JSON.parse(savedRedeemed))
       }
       // Загрузка истории купонов
       const savedHistory = localStorage.getItem(COUPON_HISTORY_KEY)
@@ -176,6 +182,13 @@ export function usePortfolio() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio))
     }
   }, [portfolio, loading])
+
+  // Сохранение погашенных облигаций в localStorage
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem('redeemed-bonds', JSON.stringify(redeemedBonds))
+    }
+  }, [redeemedBonds, loading])
 
   // Сохранение истории купонов в localStorage
   useEffect(() => {
@@ -463,40 +476,34 @@ export function usePortfolio() {
     }
   }, [])
 
-  // Погашение облигации
+  // Погашение облигации (перенос в погашенные)
   const confirmBondRedemption = useCallback((positionId, redemptionData) => {
     const position = portfolio.find(p => p.id === positionId)
     if (!position) return
 
-    // Добавляем запись в историю
-    const redemptionRecord = {
-      id: Date.now(),
-      positionId,
-      ticker: position.ticker,
-      name: position.name,
-      securityId: position.securityId,
-      type: 'bond_redemption',
-      quantity: position.quantity,
+    // Создаём запись о погашенной облигации
+    const redeemedBond = {
+      ...position,
+      redeemedDate: redemptionData.date,
       redemptionAmount: redemptionData.redemptionAmount,
       nominalValue: redemptionData.nominalValue,
-      profit: redemptionData.nominalValue - redemptionData.redemptionAmount,
-      date: redemptionData.date,
-      notes: redemptionData.notes
+      redemptionProfit: redemptionData.nominalValue - redemptionData.redemptionAmount,
+      notes: redemptionData.notes,
+      redeemedYear: new Date(redemptionData.date).getFullYear()
     }
 
-    // Сохраняем в localStorage (можно расширить для истории погашений)
-    const redemptionsKey = 'bond-redemptions'
-    const existingRedemptions = JSON.parse(localStorage.getItem(redemptionsKey) || '[]')
-    localStorage.setItem(redemptionsKey, JSON.stringify([...existingRedemptions, redemptionRecord]))
+    // Добавляем в погашенные
+    setRedeemedBonds(prev => [...prev, redeemedBond])
 
-    // Удаляем позицию из портфеля
+    // Удаляем из активного портфеля
     setPortfolio(prev => prev.filter(p => p.id !== positionId))
 
-    console.log('Облигация погашена:', redemptionRecord)
+    console.log('Облигация погашена и перенесена в архив:', redeemedBond)
   }, [portfolio])
 
   return {
     portfolio,
+    redeemedBonds,
     couponHistory,
     dividendHistory,
     currencyRates,

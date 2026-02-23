@@ -11,13 +11,14 @@ import EditPurchaseDateModal from '../components/EditPurchaseDateModal'
 import EditPurchasePriceModal from '../components/EditPurchasePriceModal'
 import ExportImportModal from '../components/ExportImportModal'
 import BondRedemptionModal from '../components/BondRedemptionModal'
+import RedeemedBondsModal from '../components/RedeemedBondsModal'
 import PositionsTable from '../components/PositionsTable'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorDisplay from '../components/ErrorDisplay'
 import Header from '../components/Header'
 
 function PortfolioPage() {
-  const { portfolio, couponHistory, dividendHistory, currencyRates, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
+  const { portfolio, redeemedBonds, couponHistory, dividendHistory, currencyRates, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend, confirmBondRedemption, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
   const { stocks: stockList, loading: stocksLoading, error: stocksError } = useStocks()
   const [bonds, setBonds] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -26,6 +27,7 @@ function PortfolioPage() {
   const [showAddDividendModal, setShowAddDividendModal] = useState(false)
   const [showExportImportModal, setShowExportImportModal] = useState(false)
   const [showBondRedemptionModal, setShowBondRedemptionModal] = useState(false)
+  const [showRedeemedBondsModal, setShowRedeemedBondsModal] = useState(false)
   const [addingDividendPosition, setAddingDividendPosition] = useState(null)
   const [bondRedemptionPosition, setBondRedemptionPosition] = useState(null)
   const [showEditDateModal, setShowEditDateModal] = useState(false)
@@ -299,7 +301,7 @@ function PortfolioPage() {
         </Row>
         <Row className="mb-4">
           <Col>
-            <div className="d-flex gap-2">
+            <div className="d-flex gap-2 flex-wrap">
               <Button variant="primary" onClick={() => { setSecurityType('stock'); setShowModal(true) }}>
                 <i className="bi bi-graph-up"></i> Добавить акцию
               </Button>
@@ -324,6 +326,16 @@ function PortfolioPage() {
                 <i className="bi bi-cash-stack"></i> История дивидендов
                 {dividendHistory.length > 0 && (
                   <span className="ms-2 badge bg-white text-success">{dividendHistory.length}</span>
+                )}
+              </Button>
+              <Button
+                variant="warning"
+                onClick={() => setShowRedeemedBondsModal(true)}
+                disabled={redeemedBonds.length === 0}
+              >
+                <i className="bi bi-archive"></i> Погашенные
+                {redeemedBonds.length > 0 && (
+                  <span className="ms-2 badge bg-white text-dark">{redeemedBonds.length}</span>
                 )}
               </Button>
               <Button
@@ -524,6 +536,13 @@ function PortfolioPage() {
           }}
           onConfirm={handleConfirmBondRedemption}
           position={bondRedemptionPosition}
+        />
+
+        {/* Модальное окно погашенных облигаций */}
+        <RedeemedBondsModal
+          show={showRedeemedBondsModal}
+          onClose={() => setShowRedeemedBondsModal(false)}
+          redeemedBonds={redeemedBonds}
         />
       </Container>
     </div>

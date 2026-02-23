@@ -13,6 +13,7 @@ function PositionsTable({
   onEditPurchasePrice,
   onAddDividend,
   onConfirmCoupon,
+  onBondRedemption,
   receivedCoupons = {},
   couponDates = {},
   setCouponDates,
@@ -227,9 +228,22 @@ function PositionsTable({
                   <td>
                     {position.type === 'bond' ? (
                       position.daysToMaturity !== null ? (
-                        <span className={position.daysToMaturity <= 30 ? 'text-danger' : position.daysToMaturity <= 90 ? 'text-warning' : 'text-success'}>
-                          {position.daysToMaturity} дн.
-                        </span>
+                        position.daysToMaturity === 0 ? (
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="text-danger fw-bold">0 дн.</span>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => onBondRedemption(position)}
+                            >
+                              <i className="bi bi-cash-coin"></i> Погасить
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className={position.daysToMaturity <= 30 ? 'text-danger' : position.daysToMaturity <= 90 ? 'text-warning' : 'text-success'}>
+                            {position.daysToMaturity} дн.
+                          </span>
+                        )
                       ) : (
                         <span className="text-muted">—</span>
                       )

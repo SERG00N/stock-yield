@@ -10,6 +10,7 @@ import DividendHistoryModal from '../components/DividendHistoryModal'
 import EditPurchaseDateModal from '../components/EditPurchaseDateModal'
 import EditPurchasePriceModal from '../components/EditPurchasePriceModal'
 import ExportImportModal from '../components/ExportImportModal'
+import BondRedemptionModal from '../components/BondRedemptionModal'
 import PositionsTable from '../components/PositionsTable'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorDisplay from '../components/ErrorDisplay'
@@ -24,7 +25,9 @@ function PortfolioPage() {
   const [showDividendHistoryModal, setShowDividendHistoryModal] = useState(false)
   const [showAddDividendModal, setShowAddDividendModal] = useState(false)
   const [showExportImportModal, setShowExportImportModal] = useState(false)
+  const [showBondRedemptionModal, setShowBondRedemptionModal] = useState(false)
   const [addingDividendPosition, setAddingDividendPosition] = useState(null)
+  const [bondRedemptionPosition, setBondRedemptionPosition] = useState(null)
   const [showEditDateModal, setShowEditDateModal] = useState(false)
   const [editingPosition, setEditingPosition] = useState(null)
   const [editingPricePosition, setEditingPricePosition] = useState(null)
@@ -59,6 +62,19 @@ function PortfolioPage() {
       [position.securityId]: undefined
     }))
     loadedCouponIdsRef.current.delete(position.securityId)
+  }
+
+  // Обработка погашения облигации
+  const handleBondRedemption = (position) => {
+    setBondRedemptionPosition(position)
+    setShowBondRedemptionModal(true)
+  }
+
+  // Обработка подтверждения погашения
+  const handleConfirmBondRedemption = (redemptionData) => {
+    confirmBondRedemption(redemptionData.positionId, redemptionData)
+    setShowBondRedemptionModal(false)
+    setBondRedemptionPosition(null)
   }
 
   // Обработка открытия модального окна редактирования даты покупки
@@ -398,6 +414,7 @@ function PortfolioPage() {
                 setShowAddDividendModal(true)
               }}
               onConfirmCoupon={handleConfirmCoupon}
+              onBondRedemption={handleBondRedemption}
               receivedCoupons={receivedCoupons}
               couponDates={couponDates}
               setCouponDates={setCouponDates}
@@ -496,6 +513,17 @@ function PortfolioPage() {
           portfolio={portfolio}
           couponHistory={couponHistory}
           dividendHistory={dividendHistory}
+        />
+
+        {/* Модальное окно погашения облигации */}
+        <BondRedemptionModal
+          show={showBondRedemptionModal}
+          onClose={() => {
+            setShowBondRedemptionModal(false)
+            setBondRedemptionPosition(null)
+          }}
+          onConfirm={handleConfirmBondRedemption}
+          position={bondRedemptionPosition}
         />
       </Container>
     </div>

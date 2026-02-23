@@ -463,6 +463,38 @@ export function usePortfolio() {
     }
   }, [])
 
+  // Погашение облигации
+  const confirmBondRedemption = useCallback((positionId, redemptionData) => {
+    const position = portfolio.find(p => p.id === positionId)
+    if (!position) return
+
+    // Добавляем запись в историю
+    const redemptionRecord = {
+      id: Date.now(),
+      positionId,
+      ticker: position.ticker,
+      name: position.name,
+      securityId: position.securityId,
+      type: 'bond_redemption',
+      quantity: position.quantity,
+      redemptionAmount: redemptionData.redemptionAmount,
+      nominalValue: redemptionData.nominalValue,
+      profit: redemptionData.nominalValue - redemptionData.redemptionAmount,
+      date: redemptionData.date,
+      notes: redemptionData.notes
+    }
+
+    // Сохраняем в localStorage (можно расширить для истории погашений)
+    const redemptionsKey = 'bond-redemptions'
+    const existingRedemptions = JSON.parse(localStorage.getItem(redemptionsKey) || '[]')
+    localStorage.setItem(redemptionsKey, JSON.stringify([...existingRedemptions, redemptionRecord]))
+
+    // Удаляем позицию из портфеля
+    setPortfolio(prev => prev.filter(p => p.id !== positionId))
+
+    console.log('Облигация погашена:', redemptionRecord)
+  }, [portfolio])
+
   return {
     portfolio,
     couponHistory,
@@ -476,6 +508,7 @@ export function usePortfolio() {
     updatePurchasePrice,
     confirmCoupon,
     confirmDividend,
+    confirmBondRedemption,
     clearPortfolio,
     getTotalValue,
     getTotalPnL,

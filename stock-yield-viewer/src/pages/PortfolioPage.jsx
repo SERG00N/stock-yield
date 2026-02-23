@@ -242,7 +242,7 @@ function PortfolioPage() {
     return (
       <div className="app">
         <Header />
-        <Container className="py-4">
+        <Container fluid className="py-4">
           <LoadingSpinner />
         </Container>
       </div>
@@ -253,7 +253,7 @@ function PortfolioPage() {
     return (
       <div className="app">
         <Header />
-        <Container className="py-4">
+        <Container fluid className="py-4">
           <ErrorDisplay message={stocksError} onRetry={() => window.location.reload()} />
         </Container>
       </div>
@@ -263,7 +263,7 @@ function PortfolioPage() {
   return (
     <div className="app">
       <Header />
-      <Container className="py-4">
+      <Container fluid className="py-4">
         {/* Заголовок */}
         <Row className="mb-4">
           <Col>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../api/moex'
 import { formatNumber } from '../utils/format'
 import SecurityIcon from './SecurityIcon'
+import PositionCard from './PositionCard'
 
 /**
  * Таблица позиций портфеля с разделением на акции и облигации
@@ -418,6 +419,25 @@ function PositionsTable({
           ))}
         </tbody>
       </Table>
+
+      {/* Мобильные карточки */}
+      <div className="mobile-cards d-block d-md-none">
+        {sortedPositions.map(position => (
+          <PositionCard
+            key={position.id}
+            position={position}
+            onRemovePosition={onRemovePosition}
+            onEditPurchaseDate={onEditPurchaseDate}
+            onEditPurchasePrice={onEditPurchasePrice}
+            onAddDividend={onAddDividend}
+            onAddCoupon={onAddCoupon}
+            onConfirmCoupon={onConfirmCoupon}
+            onBondRedemption={onBondRedemption}
+            receivedCoupons={receivedCoupons}
+            couponDates={couponDates}
+          />
+        ))}
+      </div>
     </div>
   )
 }

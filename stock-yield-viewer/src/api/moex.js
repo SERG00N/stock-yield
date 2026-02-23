@@ -344,7 +344,7 @@ export function daysUntilCoupon(nextCouponDate) {
  * Получение истории дивидендов для акции
  * Возвращает массив объектов с датой и суммой дивиденда
  */
-export async function fetchDividendHistory(secid) {
+export async function fetchDividendHistory(secid, useBackup = true) {
   try {
     const url = `${BASE_URL}/engines/stock/markets/shares/securities/${secid}/dividends.json`
 
@@ -355,6 +355,15 @@ export async function fetchDividendHistory(secid) {
     })
 
     if (!response.ok) {
+      // Пытаемся получить из резервного источника (Smart-Lab)
+      if (useBackup) {
+        console.log(`MOEX API не вернул дивиденды для ${secid}, пробуем Smart-Lab...`)
+        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
+        if (smartLabDividends.length > 0) {
+          return smartLabDividends
+        }
+      }
       return []
     }
 
@@ -365,6 +374,15 @@ export async function fetchDividendHistory(secid) {
     const columns = data.dividends?.columns || []
 
     if (dividendsData.length === 0) {
+      // Пустой результат, пробуем Smart-Lab
+      if (useBackup) {
+        console.log(`MOEX API вернул пустой список дивидендов для ${secid}, пробуем Smart-Lab...`)
+        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
+        if (smartLabDividends.length > 0) {
+          return smartLabDividends
+        }
+      }
       return []
     }
 
@@ -377,14 +395,28 @@ export async function fetchDividendHistory(secid) {
     const dividends = dividendsData.map(div => ({
       date: divDateIndex !== -1 ? div[divDateIndex] : null,
       amount: divAmountIndex !== -1 ? (div[divAmountIndex] || 0) : 0,
-      period: divPeriodIndex !== -1 ? div[divPeriodIndex] : null
+      period: divPeriodIndex !== -1 ? div[divPeriodIndex] : null,
+      source: 'moex'
     }))
 
     // Сортируем по дате (от старых к новым)
     dividends.sort((a, b) => new Date(a.date) - new Date(b.date))
 
     return dividends
-  } catch {
+  } catch (err) {
+    console.error(`Ошибка при получении истории дивидендов для ${secid}:`, err)
+    // Пытаемся получить из резервного источника
+    if (useBackup) {
+      try {
+        const { fetchDividendHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
+        if (smartLabDividends.length > 0) {
+          return smartLabDividends
+        }
+      } catch (smartLabErr) {
+        console.error('Smart-Lab также не вернул данные:', smartLabErr)
+      }
+    }
     return []
   }
 }

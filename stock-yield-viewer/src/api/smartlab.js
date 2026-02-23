@@ -332,3 +332,352 @@ function parseBondInfoFromHTML(html, ticker) {
   
   return info
 }
+
+/**
+ * Получение истории дивидендов по акции с Smart-Lab
+ * @param {string} ticker - Тикер акции (например, SBER, GAZP)
+ * @returns {Promise<Array>} - История дивидендов [{date, amount, type, period}]
+ */
+export async function fetchDividendHistoryFromSmartLab(ticker) {
+  try {
+    // Smart-Lab использует URL вида /q/{TICKER}/d/ для дивидендов
+    const url = `${BASE_URL}/q/${ticker}/d/`
+    
+    // Делаем запрос через CORS-прокси
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    
+    const response = await fetch(proxyUrl)
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка при запросе к Smart-Lab: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    const html = data.contents
+    
+    // Парсим HTML для получения дивидендов
+    const dividends = parseDividendsFromHTML(html, ticker)
+    
+    return dividends
+  } catch (err) {
+    console.error(`Smart-Lab dividend history error for ${ticker}:`, err)
+    return [] // Возвращаем пустой массив при ошибке
+  }
+}
+
+/**
+ * Парсинг HTML для извлечения дивидендов
+ * @param {string} html - HTML страница
+ * @param {string} ticker - Тикер акции
+ * @returns {Array} - Массив дивидендов
+ */
+function parseDividendsFromHTML(html, ticker) {
+  const dividends = []
+  
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    
+    // Ищем таблицу с дивидендами
+    // Smart-Lab обычно использует таблицу с заголовком "Дивиденды"
+    const tables = doc.querySelectorAll('table')
+    
+    for (const table of tables) {
+      const headers = table.querySelectorAll('th')
+      const headerText = Array.from(headers).map(th => th.textContent.trim().toLowerCase())
+      
+      // Проверяем, таблица ли это с дивидендами
+      if (headerText.some(h => h.includes('дата') || h.includes('дивиденд') || h.includes('выплата'))) {
+        const rows = table.querySelectorAll('tr')
+        
+        for (let i = 1; i < rows.length; i++) { // Пропускаем заголовок
+          const cells = rows[i].querySelectorAll('td')
+          if (cells.length >= 2) {
+            const dividendData = extractDividendData(cells, ticker)
+            if (dividendData) {
+              dividends.push(dividendData)
+            }
+          }
+        }
+      }
+    }
+    
+    // Если не нашли в таблицах, ищем в других элементах
+    if (dividends.length === 0) {
+      // Ищем элементы с классами, связанными с дивидендами
+      const dividendElements = doc.querySelectorAll('[class*="dividend"], [class*="дивиденд"]')
+      
+      dividendElements.forEach(el => {
+        const text = el.textContent
+        const match = text.match(/(\d{1,2}\.\d{2}\.\d{4})\s*[:\-]?\s*(\d+\.?\d*)\s*₽?/i)
+        if (match) {
+          const [, dateStr, amountStr] = match
+          const date = parseRussianDate(dateStr)
+          const amount = parseFloat(amountStr)
+          
+          if (date && !isNaN(amount)) {
+            dividends.push({
+              date: date.toISOString(),
+              amount,
+              ticker,
+              source: 'smart-lab'
+            })
+          }
+        }
+      })
+    }
+  } catch (err) {
+    console.error('Error parsing Smart-Lab dividends HTML:', err)
+  }
+  
+  return dividends
+}
+
+/**
+ * Извлечение данных дивиденда из ячеек таблицы
+ * @param {NodeList} cells - Ячейки таблицы
+ * @param {string} ticker - Тикер акции
+ * @returns {Object|null} - Данные дивиденда или null
+ */
+function extractDividendData(cells, ticker) {
+  try {
+    // Пытаемся извлечь дату, сумму и тип дивиденда
+    const dateCell = cells[0]?.textContent.trim()
+    const amountCell = cells[1]?.textContent.trim()
+    const typeCell = cells[2]?.textContent.trim()
+    const periodCell = cells[3]?.textContent.trim()
+    
+    // Парсим дату
+    const date = parseRussianDate(dateCell)
+    
+    // Парсим сумму дивиденда (может быть в формате "15.23 ₽" или "15.23")
+    const amount = parseRussianMoney(amountCell)
+    
+    // Тип дивиденда (обычный, привилегированный)
+    const type = parseDividendType(typeCell)
+    
+    // Период (год или квартал)
+    const period = periodCell || extractYearFromDate(date)
+    
+    if (date && amount) {
+      return {
+        date: date.toISOString(),
+        amount,
+        type,
+        period,
+        ticker,
+        source: 'smart-lab'
+      }
+    }
+  } catch (err) {
+    console.error('Error extracting dividend data:', err)
+  }
+  
+  return null
+}
+
+/**
+ * Определение типа дивиденда
+ * @param {string} typeStr - Строка типа
+ * @returns {string} - Тип дивиденда
+ */
+function parseDividendType(typeStr) {
+  if (!typeStr) return 'common'
+  
+  const lower = typeStr.toLowerCase()
+  
+  if (lower.includes('прив')) return 'preferred'
+  if (lower.includes('обыкн')) return 'common'
+  if (lower.includes('кварт')) return 'quarterly'
+  if (lower.includes('год')) return 'annual'
+  
+  return 'common'
+}
+
+/**
+ * Извлечение года из даты
+ * @param {Date} date - Дата
+ * @returns {string} - Год
+ */
+function extractYearFromDate(date) {
+  if (!date) return ''
+  return date.getFullYear().toString()
+}
+
+/**
+ * Получение календаря дивидендов (будущие выплаты)
+ * @param {string} ticker - Тикер акции
+ * @returns {Promise<Array>} - Будущие дивиденды
+ */
+export async function fetchUpcomingDividends(ticker) {
+  try {
+    const url = `${BASE_URL}/q/${ticker}/d/`
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    
+    const response = await fetch(proxyUrl)
+    if (!response.ok) {
+      throw new Error(`Ошибка при запросе к Smart-Lab: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    const html = data.contents
+    
+    // Парсим будущие дивиденды
+    const upcomingDividends = parseUpcomingDividendsFromHTML(html, ticker)
+    
+    return upcomingDividends
+  } catch (err) {
+    console.error(`Smart-Lab upcoming dividends error for ${ticker}:`, err)
+    return []
+  }
+}
+
+/**
+ * Парсинг будущих дивидендов из HTML
+ * @param {string} html - HTML страница
+ * @param {string} ticker - Тикер
+ * @returns {Array} - Будущие дивиденды
+ */
+function parseUpcomingDividendsFromHTML(html, ticker) {
+  const dividends = []
+  
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    
+    // Ищем секцию с будущими дивидендами
+    const tables = doc.querySelectorAll('table')
+    
+    for (const table of tables) {
+      const headers = table.querySelectorAll('th')
+      const headerText = Array.from(headers).map(th => th.textContent.trim().toLowerCase())
+      
+      if (headerText.some(h => h.includes('дата') || h.includes('выплата'))) {
+        const rows = table.querySelectorAll('tr')
+        
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i].querySelectorAll('td')
+          if (cells.length >= 2) {
+            const dateStr = cells[0]?.textContent.trim()
+            const date = parseRussianDate(dateStr)
+            
+            // Если дата в будущем, добавляем дивиденд
+            if (date && date > new Date()) {
+              const amountStr = cells[1]?.textContent.trim()
+              const amount = parseRussianMoney(amountStr)
+              
+              if (amount) {
+                dividends.push({
+                  date: date.toISOString(),
+                  amount,
+                  ticker,
+                  isEstimated: true,
+                  source: 'smart-lab'
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error parsing upcoming dividends:', err)
+  }
+  
+  return dividends
+}
+
+/**
+ * Получение информации об акции
+ * @param {string} ticker - Тикер акции
+ * @returns {Promise<Object>} - Информация об акции
+ */
+export async function fetchStockInfoFromSmartLab(ticker) {
+  try {
+    const url = `${BASE_URL}/q/${ticker}/`
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    
+    const response = await fetch(proxyUrl)
+    if (!response.ok) {
+      throw new Error(`Ошибка при запросе к Smart-Lab: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    const html = data.contents
+    
+    const info = parseStockInfoFromHTML(html, ticker)
+    
+    return info
+  } catch (err) {
+    console.error(`Smart-Lab stock info error for ${ticker}:`, err)
+    return null
+  }
+}
+
+/**
+ * Парсинг информации об акции
+ * @param {string} html - HTML страница
+ * @param {string} ticker - Тикер
+ * @returns {Object} - Информация об акции
+ */
+function parseStockInfoFromHTML(html, ticker) {
+  const info = {
+    ticker,
+    name: '',
+    sector: '',
+    marketCap: null,
+    peRatio: null,
+    dividendYield: null,
+    lastPrice: null
+  }
+  
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    
+    // Ищем заголовок с названием
+    const title = doc.querySelector('h1')
+    if (title) {
+      info.name = title.textContent.replace(ticker, '').trim()
+    }
+    
+    // Ищем параметры в таблице
+    const tables = doc.querySelectorAll('table')
+    
+    for (const table of tables) {
+      const rows = table.querySelectorAll('tr')
+      
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td, th')
+        if (cells.length >= 2) {
+          const label = cells[0]?.textContent.trim().toLowerCase()
+          const value = cells[1]?.textContent.trim()
+          
+          if (label.includes('капитализация') || label.includes('market cap')) {
+            info.marketCap = parseRussianMoney(value)
+          }
+          
+          if (label.includes('p/e') || label.includes('price earnings')) {
+            info.peRatio = parseFloat(value)
+          }
+          
+          if (label.includes('дивидендн') || label.includes('dividend yield')) {
+            info.dividendYield = parseFloat(value.replace('%', ''))
+          }
+          
+          if (label.includes('цена') || label.includes('last price')) {
+            info.lastPrice = parseRussianMoney(value)
+          }
+          
+          if (label.includes('сектор') || label.includes('sector')) {
+            info.sector = value
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error parsing stock info:', err)
+  }
+  
+  return info
+}

@@ -400,13 +400,13 @@ function PortfolioPage() {
             <Card className="portfolio-summary">
               <Card.Body>
                 <Card.Title>Курсы валют (ЦБ РФ)</Card.Title>
-                <Card.Text className="summary-value" style={{ fontSize: '1rem' }}>
+                <div className="summary-value" style={{ fontSize: '1rem' }}>
                   <div>USD: {currencyRates.USD?.toFixed(2)} ₽</div>
                   <div>EUR: {currencyRates.EUR?.toFixed(2)} ₽</div>
                   <div className="text-white-50" style={{ fontSize: '0.85rem' }}>
                     {currencyRates.lastUpdate ? new Date(currencyRates.lastUpdate).toLocaleDateString('ru-RU') : ''}
                   </div>
-                </Card.Text>
+                </div>
               </Card.Body>
             </Card>
           </Col>

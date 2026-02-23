@@ -389,23 +389,24 @@ body {
   border-radius: 12px;
 }
 
-.portfolio-summary .card-title,
-.portfolio-summary .card-title * {
+.portfolio-summary .card-title {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #fff !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
 .portfolio-summary .card-text {
-  color: #fff !important;
+  color: #ffffff !important;
+  font-weight: 700;
 }
 
 .summary-value {
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
-  color: #fff !important;
+  color: #ffffff !important;
 }
 
 /* Dark Modal */

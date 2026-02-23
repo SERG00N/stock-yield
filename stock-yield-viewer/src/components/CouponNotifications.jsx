@@ -61,7 +61,7 @@ function CouponNotifications({ positions, couponDates, receivedCoupons }) {
   }
 
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       {visibleNotifications.map(notification => (
         <Alert
           key={notification.id}
@@ -71,45 +71,47 @@ function CouponNotifications({ positions, couponDates, receivedCoupons }) {
           className="coupon-notification"
         >
           <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <Alert.Heading>
-                <i className={`bi bi-${notification.daysToCoupon === 0 ? 'exclamation-triangle' : 'bell'}`}></i>
-                {' '}Купон: {notification.ticker}
-              </Alert.Heading>
-              <p className="mb-1">
-                {notification.daysToCoupon === 0 ? (
-                  <strong className="text-danger">Сегодня!</strong>
-                ) : notification.daysToCoupon === 1 ? (
-                  <strong className="text-warning">Завтра</strong>
-                ) : (
-                  <>Через <strong>{notification.daysToCoupon} дн.</strong></>
-                )}
-              </p>
-              <p className="mb-0 small">
-                {notification.name} • {notification.quantity} шт. • ₽{notification.totalCoupon.toFixed(2)}
-              </p>
+            <div className="d-flex align-items-center gap-3">
+              <i className={`bi bi-${notification.daysToCoupon === 0 ? 'exclamation-triangle' : 'bell'} fs-5`}></i>
+              <div>
+                <span className="fw-semibold">{notification.ticker}</span>
+                <span className="mx-2 text-muted">•</span>
+                <span className="text-nowrap">
+                  {notification.daysToCoupon === 0 ? (
+                    <strong className="text-danger">Сегодня</strong>
+                  ) : notification.daysToCoupon === 1 ? (
+                    <strong className="text-warning">Завтра</strong>
+                  ) : (
+                    <>Через <strong>{notification.daysToCoupon} дн.</strong></>
+                  )}
+                </span>
+                <span className="mx-2 text-muted">•</span>
+                <span className="text-nowrap">{notification.quantity} шт.</span>
+                <span className="mx-2 text-muted">•</span>
+                <span className="text-nowrap">₽{notification.totalCoupon.toFixed(2)}</span>
+              </div>
             </div>
             {notification.daysToCoupon === 0 && (
-              <a
-                href="#"
-                className="btn btn-sm btn-success"
+              <button
+                className="btn btn-sm btn-success py-0 px-2"
+                style={{ fontSize: '0.75rem' }}
                 onClick={(e) => {
                   e.preventDefault()
-                  // Прокрутка к таблице позиций
                   document.querySelector('.positions-table')?.scrollIntoView({ behavior: 'smooth' })
                 }}
               >
                 <i className="bi bi-check-lg"></i> Получить
-              </a>
+              </button>
             )}
           </div>
         </Alert>
       ))}
 
       {visibleNotifications.length > 1 && (
-        <div className="text-end">
+        <div className="text-end mt-1">
           <button
-            className="btn btn-sm btn-outline-secondary"
+            className="btn btn-sm btn-outline-secondary py-0 px-2"
+            style={{ fontSize: '0.75rem' }}
             onClick={handleDismissAll}
           >
             <i className="bi bi-check-all"></i> Скрыть все

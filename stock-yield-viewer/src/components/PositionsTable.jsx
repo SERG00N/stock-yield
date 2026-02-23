@@ -31,6 +31,27 @@ function PositionsTable({
     return true
   })
 
+  // Сортировка для вкладок "Облигации" и "Все"
+  const sortedPositions = activeTab !== 'stocks' 
+    ? [...filteredPositions].sort((a, b) => {
+        // Сортируем только облигации
+        if (a.type !== 'bond' || b.type !== 'bond') return 0
+        
+        // Сначала те, у которых 0 дней до купона (неподтверждённые)
+        const aIsZeroCoupon = a.daysToCoupon === 0 && !receivedCoupons[a.securityId]
+        const bIsZeroCoupon = b.daysToCoupon === 0 && !receivedCoupons[b.securityId]
+        
+        if (aIsZeroCoupon && !bIsZeroCoupon) return -1
+        if (!aIsZeroCoupon && bIsZeroCoupon) return 1
+        
+        // Затем по возрастанию "Через" (период между купонами)
+        const aPeriod = a.couponPeriod || 9999
+        const bPeriod = b.couponPeriod || 9999
+        
+        return aPeriod - bPeriod
+      })
+    : filteredPositions
+
   // Разделение на акции и облигации
   const stockPositions = positions.filter(p => p.type === 'stock')
   const bondPositions = positions.filter(p => p.type === 'bond')
@@ -151,7 +172,7 @@ function PositionsTable({
           </tr>
         </thead>
         <tbody>
-          {filteredPositions.map(position => (
+          {sortedPositions.map(position => (
             <tr key={position.id}>
               <td>
                 <div className="table-ticker">{position.ticker}</div>

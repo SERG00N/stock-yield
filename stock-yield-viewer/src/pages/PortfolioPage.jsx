@@ -15,7 +15,7 @@ import ErrorDisplay from '../components/ErrorDisplay'
 import Header from '../components/Header'
 
 function PortfolioPage() {
-  const { portfolio, couponHistory, dividendHistory, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
+  const { portfolio, couponHistory, dividendHistory, currencyRates, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, confirmDividend, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
   const { stocks: stockList, loading: stocksLoading, error: stocksError } = useStocks()
   const [bonds, setBonds] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -194,10 +194,15 @@ function PortfolioPage() {
   // Позиции портфеля с текущими данными
   const positionsWithData = portfolio.map(position => {
     const currentPrice = currentPrices.find(p => p.id === position.securityId)?.price || 0
+    const currency = position.currency || 'RUB'
+    const rate = currencyRates[currency] || 1
+    
     const marketValue = currentPrice * position.quantity
+    const marketValueRub = marketValue * rate // В рублях
     const invested = position.avgPrice * position.quantity
-    const pnl = marketValue - invested
-    const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0
+    const investedRub = invested * rate // В рублях
+    const pnl = marketValueRub - investedRub
+    const pnlPercent = invested > 0 ? (pnl / investedRub) * 100 : 0
 
     // Купонная доходность для облигаций
     const bond = bonds.find(b => b.id === position.securityId)
@@ -205,15 +210,19 @@ function PortfolioPage() {
     const totalCoupon = couponPerBond * position.quantity
     const couponPeriod = bond?.couponPeriod || 0
     const daysToCoupon = couponDates[position.securityId]
-    
+
     // Дата погашения и дни до погашения
     const maturityDate = bond?.maturityDate || null
     const daysToMaturity = daysUntilMaturity(maturityDate)
 
     return {
       ...position,
+      currency,
       currentPrice,
       marketValue,
+      marketValueRub,
+      invested,
+      investedRub,
       pnl,
       pnlPercent,
       couponPerBond,
@@ -221,7 +230,8 @@ function PortfolioPage() {
       couponPeriod,
       daysToCoupon,
       maturityDate,
-      daysToMaturity
+      daysToMaturity,
+      rate
     }
   })
 
@@ -357,6 +367,20 @@ function PortfolioPage() {
               </Card.Body>
             </Card>
           </Col>
+          <Col md={3}>
+            <Card className="portfolio-summary">
+              <Card.Body>
+                <Card.Title className="text-muted">Курсы валют (ЦБ РФ)</Card.Title>
+                <Card.Text className="summary-value" style={{ fontSize: '1rem' }}>
+                  <div>USD: {currencyRates.USD?.toFixed(2)} ₽</div>
+                  <div>EUR: {currencyRates.EUR?.toFixed(2)} ₽</div>
+                  <div className="text-muted" style={{ fontSize: '0.85rem' }}>
+                    {currencyRates.lastUpdate ? new Date(currencyRates.lastUpdate).toLocaleDateString('ru-RU') : ''}
+                  </div>
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
         </Row>
 
         {/* Таблица позиций */}
@@ -375,6 +399,7 @@ function PortfolioPage() {
                     <tr>
                       <th>Бумага</th>
                       <th>Тип</th>
+                      <th>Валюта</th>
                       <th>Количество</th>
                       <th>Цена покупки</th>
                       <th>Текущая цена</th>
@@ -402,6 +427,11 @@ function PortfolioPage() {
                             {position.type === 'bond' ? 'Облигация' : 'Акция'}
                           </span>
                         </td>
+                        <td>
+                          <span className={`badge ${position.currency === 'RUB' ? 'bg-secondary' : 'bg-warning text-dark'}`}>
+                            {position.currency}
+                          </span>
+                        </td>
                         <td>{position.quantity}</td>
                         <td>
                           <Button
@@ -411,15 +441,22 @@ function PortfolioPage() {
                             onClick={() => handleEditPurchasePrice(position)}
                           >
                             <span className="text-info">
-                              ₽{position.avgPrice.toFixed(2)}
+                              {position.currency === 'RUB' ? '₽' : position.currency} {position.avgPrice.toFixed(2)}
                             </span>
                             <i className="bi bi-pencil-fill ms-1" style={{ fontSize: '0.7rem' }}></i>
                           </Button>
                         </td>
-                        <td>₽{position.currentPrice.toFixed(2)}</td>
-                        <td>₽{position.marketValue.toFixed(2)}</td>
+                        <td>{position.currency === 'RUB' ? '₽' : position.currency} {position.currentPrice.toFixed(2)}</td>
+                        <td>
+                          <div>{position.currency === 'RUB' ? '₽' : position.currency} {position.marketValue.toFixed(2)}</div>
+                          {position.currency !== 'RUB' && (
+                            <small className="text-muted">
+                              ≈ ₽{position.marketValueRub.toFixed(2)}
+                            </small>
+                          )}
+                        </td>
                         <td className={position.pnl >= 0 ? 'text-success' : 'text-danger'}>
-                          {position.pnl >= 0 ? '+' : ''}₽{position.pnl.toFixed(2)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
+                          {position.pnl >= 0 ? '+' : ''}{position.currency === 'RUB' ? '₽' : position.currency} {position.pnl.toFixed(2)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
                         </td>
                         <td>
                           {(position.type === 'bond' || position.type === 'stock') ? (

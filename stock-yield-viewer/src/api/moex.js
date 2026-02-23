@@ -1,6 +1,27 @@
 const BASE_URL = 'https://iss.moex.com/iss'
 
 /**
+ * Получение текущих курсов валют (CBR.ru)
+ * @returns {Promise<Object>} - Курсы валют { USD: 75.5, EUR: 82.3, ... }
+ */
+export async function fetchCurrencyRates() {
+  const { fetchAllCurrencyRates, currencyCache } = await import('./cbr')
+  return currencyCache.getRates()
+}
+
+/**
+ * Конвертация валюты
+ * @param {number} amount - Сумма
+ * @param {string} from - Из валюты
+ * @param {string} to - В валюту
+ * @returns {Promise<number>}
+ */
+export async function convertCurrency(amount, from, to) {
+  const { convertCurrency } = await import('./cbr')
+  return convertCurrency(amount, from, to)
+}
+
+/**
  * Получение списка акций с основными данными
  */
 export async function fetchStocks() {
@@ -224,7 +245,7 @@ export async function fetchNextCouponDate(secid) {
  * Получение истории всех купонов для облигации
  * Возвращает массив объектов с датой и суммой купона
  */
-export async function fetchCouponHistory(secid) {
+export async function fetchCouponHistory(secid, useBackup = true) {
   try {
     const url = `${BASE_URL}/engines/stock/markets/bonds/securities/${secid}/coupons.json`
 
@@ -235,6 +256,15 @@ export async function fetchCouponHistory(secid) {
     })
 
     if (!response.ok) {
+      // Пытаемся получить из резервного источника (Smart-Lab)
+      if (useBackup) {
+        console.log(`MOEX API не вернул купоны для ${secid}, пробуем Smart-Lab...`)
+        const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
+        if (smartLabCoupons.length > 0) {
+          return smartLabCoupons
+        }
+      }
       return []
     }
 
@@ -245,6 +275,15 @@ export async function fetchCouponHistory(secid) {
     const columns = data.coupons?.columns || []
 
     if (couponsData.length === 0) {
+      // Пустой результат, пробуем Smart-Lab
+      if (useBackup) {
+        console.log(`MOEX API вернул пустой список купонов для ${secid}, пробуем Smart-Lab...`)
+        const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
+        if (smartLabCoupons.length > 0) {
+          return smartLabCoupons
+        }
+      }
       return []
     }
 
@@ -257,14 +296,28 @@ export async function fetchCouponHistory(secid) {
     const coupons = couponsData.map(coupon => ({
       date: couponDateIndex !== -1 ? coupon[couponDateIndex] : null,
       value: couponValueIndex !== -1 ? (coupon[couponValueIndex] || 0) : 0,
-      accrued: couponAccruedIndex !== -1 ? (coupon[couponAccruedIndex] || 0) : 0
+      accrued: couponAccruedIndex !== -1 ? (coupon[couponAccruedIndex] || 0) : 0,
+      source: 'moex'
     }))
 
     // Сортируем по дате (от старых к новым)
     coupons.sort((a, b) => new Date(a.date) - new Date(b.date))
 
     return coupons
-  } catch {
+  } catch (err) {
+    console.error(`Ошибка при получении истории купонов для ${secid}:`, err)
+    // Пытаемся получить из резервного источника
+    if (useBackup) {
+      try {
+        const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
+        const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
+        if (smartLabCoupons.length > 0) {
+          return smartLabCoupons
+        }
+      } catch (smartLabErr) {
+        console.error('Smart-Lab также не вернул данные:', smartLabErr)
+      }
+    }
     return []
   }
 }

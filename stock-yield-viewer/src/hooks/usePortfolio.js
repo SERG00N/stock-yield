@@ -123,6 +123,7 @@ export function usePortfolio() {
   const [portfolio, setPortfolio] = useState([])
   const [couponHistory, setCouponHistory] = useState([])
   const [dividendHistory, setDividendHistory] = useState([])
+  const [currencyRates, setCurrencyRates] = useState({ RUB: 1, USD: 75, EUR: 82 })
   const [loading, setLoading] = useState(true)
 
   // Загрузка портфеля из localStorage
@@ -142,11 +143,31 @@ export function usePortfolio() {
       if (savedDividendHistory) {
         setDividendHistory(JSON.parse(savedDividendHistory))
       }
+      // Загрузка курсов валют из localStorage
+      const savedRates = localStorage.getItem('currency-rates')
+      if (savedRates) {
+        setCurrencyRates(JSON.parse(savedRates))
+      }
     } catch (err) {
       console.error('Ошибка загрузки портфеля:', err)
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  // Загрузка актуальных курсов валют
+  useEffect(() => {
+    const loadRates = async () => {
+      try {
+        const { currencyCache } = await import('../api/cbr')
+        const rates = await currencyCache.getRates()
+        setCurrencyRates(rates)
+        localStorage.setItem('currency-rates', JSON.stringify(rates))
+      } catch (err) {
+        console.error('Ошибка загрузки курсов валют:', err)
+      }
+    }
+    loadRates()
   }, [])
 
   // Сохранение портфеля в localStorage
@@ -288,23 +309,31 @@ export function usePortfolio() {
     setPortfolio([])
   }, [])
 
-  // Расчёт общей стоимости портфеля
-  const getTotalValue = useCallback((currentPrices) => {
+  // Расчёт общей стоимости портфеля (в рублях)
+  const getTotalValue = useCallback((currentPrices, rates = currencyRates) => {
     return portfolio.reduce((total, position) => {
       const currentPrice = currentPrices.find(p => p.id === position.securityId)?.price || 0
-      return total + (currentPrice * position.quantity)
+      const currency = position.currency || 'RUB'
+      const rate = rates[currency] || 1
+      
+      // Конвертируем в рубли
+      const valueInRub = currentPrice * position.quantity * rate
+      return total + valueInRub
     }, 0)
-  }, [portfolio])
+  }, [portfolio, currencyRates])
 
-  // Расчёт общей прибыли/убытка
-  const getTotalPnL = useCallback((currentPrices) => {
+  // Расчёт общей прибыли/убытка (в рублях)
+  const getTotalPnL = useCallback((currentPrices, rates = currencyRates) => {
     return portfolio.reduce((total, position) => {
       const currentPrice = currentPrices.find(p => p.id === position.securityId)?.price || 0
-      const invested = position.avgPrice * position.quantity
-      const current = currentPrice * position.quantity
+      const currency = position.currency || 'RUB'
+      const rate = rates[currency] || 1
+      
+      const invested = position.avgPrice * position.quantity * rate
+      const current = currentPrice * position.quantity * rate
       return total + (current - invested)
     }, 0)
-  }, [portfolio])
+  }, [portfolio, currencyRates])
 
   // Подтверждение получения купона
   const confirmCoupon = useCallback((positionId, couponAmount, positionData) => {
@@ -438,6 +467,7 @@ export function usePortfolio() {
     portfolio,
     couponHistory,
     dividendHistory,
+    currencyRates,
     loading,
     addPosition,
     removePosition,

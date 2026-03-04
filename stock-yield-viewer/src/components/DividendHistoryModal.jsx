@@ -182,8 +182,7 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
                           <div key={secid} className="mb-2 p-2" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
                             <div className="d-flex justify-content-between align-items-center">
                               <div>
-                                <div className="fw-bold text-info">{stockData.ticker}</div>
-                                <div className="small text-white-50">{stockData.name}</div>
+                                <div className="fw-bold">{stockData.name}</div>
                               </div>
                               <div className="text-end">
                                 <div className="text-success fw-bold">₽{stockData.amount.toFixed(2)}</div>
@@ -224,8 +223,7 @@ function DividendHistoryModal({ show, onClose, dividendHistory, portfolioPositio
                       <tr key={item.id}>
                         <td>{formatDate(item.date)}</td>
                         <td>
-                          <div className="fw-bold">{item.ticker}</div>
-                          <div className="text-muted small">{item.name}</div>
+                          <div className="fw-bold">{item.name}</div>
                         </td>
                         <td>{item.quantity}</td>
                         <td className="text-success fw-bold">

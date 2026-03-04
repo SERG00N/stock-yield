@@ -173,8 +173,7 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
                           <div key={secid} className="mb-2 p-2" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>
                             <div className="d-flex justify-content-between align-items-center">
                               <div>
-                                <div className="fw-bold text-info">{bondData.ticker}</div>
-                                <div className="small text-white-50">{bondData.name}</div>
+                                <div className="fw-bold">{bondData.name}</div>
                               </div>
                               <div className="text-end">
                                 <div className="text-success fw-bold">₽{bondData.amount.toFixed(2)}</div>
@@ -206,8 +205,7 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
                   <tr key={item.id}>
                     <td>{formatDate(item.date)}</td>
                     <td>
-                      <div className="fw-bold">{item.ticker}</div>
-                      <div className="text-muted small">{item.name}</div>
+                      <div className="fw-bold">{item.name}</div>
                     </td>
                     <td>{item.quantity}</td>
                     <td>

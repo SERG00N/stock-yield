@@ -17,12 +17,20 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
     const yearsCoupons = {}
     const today = new Date()
 
+    // Создаём множество уже учтённых купонов (по дате и securityId)
+    const processedCoupons = new Set()
+
     // Сначала добавляем купоны из истории (ручные и авто)
     couponHistory.forEach(item => {
       if (!item.date || !item.couponAmount) return
 
       const couponDate = new Date(item.date)
       const year = couponDate.getFullYear()
+      const couponKey = `${item.securityId}-${item.date}`
+
+      // Пропускаем уже обработанные купоны
+      if (processedCoupons.has(couponKey)) return
+      processedCoupons.add(couponKey)
 
       if (!yearsCoupons[year]) {
         yearsCoupons[year] = { amount: 0, count: 0, byBond: {} }
@@ -60,11 +68,15 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
             if (!coupon.date) return
 
             const couponDate = new Date(coupon.date)
+            const couponKey = `${position.securityId}-${coupon.date}`
 
             // Пропускаем купоны до даты покупки
             if (couponDate < purchaseDate) return
             // Пропускаем будущие купоны
             if (couponDate > today) return
+            // Пропускаем уже обработанные купоны
+            if (processedCoupons.has(couponKey)) return
+            processedCoupons.add(couponKey)
 
             const year = couponDate.getFullYear()
             // Используем реальный размер купона из API
@@ -95,29 +107,35 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
 
           while (currentDate <= today) {
             const year = currentDate.getFullYear()
-            const couponAmount = couponPerBond * quantity
+            const couponKey = `${position.securityId}-${year}-${currentDate.getMonth()}`
 
             if (!yearsCoupons[year]) {
               yearsCoupons[year] = { amount: 0, count: 0, byBond: {} }
             }
             if (!yearsCoupons[year].byBond[position.securityId]) {
               yearsCoupons[year].byBond[position.securityId] = {
-                amount: 0, 
+                amount: 0,
                 count: 0,
                 ticker: position.ticker,
                 name: position.name
               }
             }
-            yearsCoupons[year].amount += couponAmount
-            yearsCoupons[year].count += 1
-            yearsCoupons[year].byBond[position.securityId].amount += couponAmount
-            yearsCoupons[year].byBond[position.securityId].count += 1
-            
+
+            // Добавляем купон только если он ещё не был обработан
+            if (!processedCoupons.has(couponKey)) {
+              const couponAmount = couponPerBond * quantity
+              yearsCoupons[year].amount += couponAmount
+              yearsCoupons[year].count += 1
+              yearsCoupons[year].byBond[position.securityId].amount += couponAmount
+              yearsCoupons[year].byBond[position.securityId].count += 1
+              processedCoupons.add(couponKey)
+            }
+
             currentDate.setDate(currentDate.getDate() + couponPeriodDays)
           }
         }
       })
-    
+
     return yearsCoupons
   }
 

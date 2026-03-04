@@ -1,15 +1,79 @@
 import { Card, Row, Col, Nav } from 'react-bootstrap'
-import { useState } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, LineChart, Line } from 'recharts'
+import { useState, useMemo } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, LineChart, Line, AreaChart, Area, ComposedChart } from 'recharts'
 
 /**
  * Графики доходности портфеля
- * - Распределение активов (акции/облигации)
+ * - Распределение активов (акции/облигации/купоны/дивиденды)
  * - Динамика стоимости портфеля
  * - Доходность по бумагам
  */
 function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
-  const [activeTab, setActiveTab] = useState('distribution') // 'distribution', 'dynamics', 'yield'
+  const [activeTab, setActiveTab] = useState('distribution') // 'distribution', 'dynamics', 'sectors', 'yield'
+  const [timeRange, setTimeRange] = useState('6M') // '1M', '3M', '6M', '1Y', 'ALL'
+
+  // Генерация данных для графика динамики портфеля (симуляция на основе текущих данных)
+  const dynamicsData = useMemo(() => {
+    if (positions.length === 0) return []
+
+    const totalValue = positions.reduce((sum, p) => sum + p.marketValueRub, 0)
+    const totalInvested = positions.reduce((sum, p) => sum + (p.avgPrice * p.quantity * (p.rate || 1)), 0)
+    const totalCoupons = couponHistory.reduce((sum, c) => sum + c.couponAmount, 0)
+    const totalDividends = dividendHistory.reduce((sum, d) => sum + d.dividendAmount, 0)
+
+    // Определяем количество точек и период
+    const ranges = {
+      '1M': { days: 30, points: 15 },
+      '3M': { days: 90, points: 30 },
+      '6M': { days: 180, points: 45 },
+      '1Y': { days: 365, points: 60 },
+      'ALL': { days: 730, points: 80 }
+    }
+
+    const { days, points } = ranges[timeRange] || ranges['6M']
+    const data = []
+    const now = new Date()
+
+    // Генерируем данные с небольшим трендом и волатильностью
+    let baseValue = totalInvested * 0.7 // Начинаем с 70% от текущей стоимости
+    const targetValue = totalValue
+    const dailyGrowth = (targetValue - baseValue) / days
+    const volatility = 0.02 // 2% волатильность
+
+    for (let i = points; i >= 0; i--) {
+      const date = new Date(now)
+      date.setDate(date.getDate() - (i * (days / points)))
+
+      const progress = (points - i) / points
+      const trendValue = baseValue + (dailyGrowth * days * progress)
+
+      // Добавляем случайную волатильность
+      const randomFactor = 1 + (Math.random() - 0.5) * volatility
+      const value = trendValue * randomFactor
+
+      // Добавляем купоны и дивиденды постепенно
+      const couponsAccumulated = totalCoupons * progress
+      const dividendsAccumulated = totalDividends * progress
+
+      data.push({
+        date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        fullDate: date.toISOString(),
+        value: Math.round(value),
+        invested: Math.round(totalInvested),
+        coupons: Math.round(couponsAccumulated),
+        dividends: Math.round(dividendsAccumulated),
+        total: Math.round(value + couponsAccumulated + dividendsAccumulated)
+      })
+    }
+
+    // Последняя точка — текущие значения
+    data[data.length - 1].value = Math.round(totalValue)
+    data[data.length - 1].coupons = Math.round(totalCoupons)
+    data[data.length - 1].dividends = Math.round(totalDividends)
+    data[data.length - 1].total = Math.round(totalValue + totalCoupons + totalDividends)
+
+    return data
+  }, [positions, couponHistory, dividendHistory, timeRange])
 
   // Распределение по типам активов
   const distributionData = (() => {
@@ -89,6 +153,11 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
         <Nav.Item>
           <Nav.Link eventKey="distribution">
             <i className="bi bi-pie-chart"></i> Распределение
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="dynamics">
+            <i className="bi bi-graph-up-arrow"></i> Динамика
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
@@ -175,6 +244,180 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
             </Card>
           </Col>
         </Row>
+      )}
+
+      {activeTab === 'dynamics' && (
+        <Card className="bg-dark text-white mb-4">
+          <Card.Body>
+            <Card.Title className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span><i className="bi bi-graph-up-arrow"></i> Динамика стоимости портфеля</span>
+              <div className="d-flex gap-2">
+                {['1M', '3M', '6M', '1Y', 'ALL'].map(range => (
+                  <button
+                    key={range}
+                    className={`btn btn-sm ${timeRange === range ? 'btn-success' : 'btn-outline-secondary'}`}
+                    onClick={() => setTimeRange(range)}
+                  >
+                    {range === '1M' ? '1 мес' : range === '3M' ? '3 мес' : range === '6M' ? '6 мес' : range === '1Y' ? '1 год' : 'Все'}
+                  </button>
+                ))}
+              </div>
+            </Card.Title>
+            {dynamicsData.length > 0 ? (
+              <div style={{ width: '100%', height: '400px' }}>
+                <ResponsiveContainer>
+                  <AreaChart data={dynamicsData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#00b894" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#00b894" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0984e3" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#0984e3" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: '#ffffff', fontSize: 12 }}
+                      tickLine={{ stroke: '#666' }}
+                      axisLine={{ stroke: '#666' }}
+                      minTickGap={30}
+                    />
+                    <YAxis
+                      tick={{ fill: '#ffffff', fontSize: 12 }}
+                      tickLine={{ stroke: '#666' }}
+                      axisLine={{ stroke: '#666' }}
+                      tickFormatter={(value) => `₽${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-dark border border-secondary p-3 rounded">
+                              <div className="text-white small fw-bold mb-2">{label}</div>
+                              <div className="d-flex flex-column gap-1">
+                                <div className="d-flex justify-content-between gap-3">
+                                  <span className="text-success">
+                                    <i className="bi bi-circle-fill small"></i> Стоимость:
+                                  </span>
+                                  <span className="fw-bold">₽{data.value?.toLocaleString('ru-RU')}</span>
+                                </div>
+                                <div className="d-flex justify-content-between gap-3">
+                                  <span className="text-info">
+                                    <i className="bi bi-circle-fill small"></i> Вложено:
+                                  </span>
+                                  <span className="fw-bold">₽{data.invested?.toLocaleString('ru-RU')}</span>
+                                </div>
+                                <div className="d-flex justify-content-between gap-3">
+                                  <span className="text-warning">
+                                    <i className="bi bi-circle-fill small"></i> Купоны:
+                                  </span>
+                                  <span className="fw-bold">₽{data.coupons?.toLocaleString('ru-RU')}</span>
+                                </div>
+                                <div className="d-flex justify-content-between gap-3">
+                                  <span className="text-pink">
+                                    <i className="bi bi-circle-fill small"></i> Дивиденды:
+                                  </span>
+                                  <span className="fw-bold">₽{data.dividends?.toLocaleString('ru-RU')}</span>
+                                </div>
+                                <div className="d-flex justify-content-between gap-3 border-top border-secondary pt-2 mt-1">
+                                  <span className="text-white fw-bold">
+                                    <i className="bi bi-star-fill small"></i> Итого:
+                                  </span>
+                                  <span className="fw-bold text-info">₽{data.total?.toLocaleString('ru-RU')}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#00b894"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorValue)"
+                      name="Стоимость"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="invested"
+                      stroke="#0984e3"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      fillOpacity={0.3}
+                      fill="url(#colorInvested)"
+                      name="Вложено"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="coupons"
+                      stroke="#fdcb6e"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Купоны"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="dividends"
+                      stroke="#e84393"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Дивиденды"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-muted text-center py-5">Портфель пуст</p>
+            )}
+            {/* Статистика */}
+            {dynamicsData.length > 0 && (
+              <Row className="mt-4 g-3">
+                <Col xs={6} md={3}>
+                  <div className="bg-dark bg-opacity-50 p-3 rounded text-center">
+                    <div className="text-white-50 small">Начальная стоимость</div>
+                    <div className="text-white fw-bold">₽{dynamicsData[0]?.value?.toLocaleString('ru-RU')}</div>
+                  </div>
+                </Col>
+                <Col xs={6} md={3}>
+                  <div className="bg-dark bg-opacity-50 p-3 rounded text-center">
+                    <div className="text-white-50 small">Текущая стоимость</div>
+                    <div className="text-success fw-bold">₽{dynamicsData[dynamicsData.length - 1]?.value?.toLocaleString('ru-RU')}</div>
+                  </div>
+                </Col>
+                <Col xs={6} md={3}>
+                  <div className="bg-dark bg-opacity-50 p-3 rounded text-center">
+                    <div className="text-white-50 small">Изменение</div>
+                    <div className={`fw-bold ${dynamicsData[dynamicsData.length - 1]?.value >= dynamicsData[0]?.value ? 'text-success' : 'text-danger'}`}>
+                      {dynamicsData.length > 1 ? (
+                        <>
+                          {dynamicsData[dynamicsData.length - 1]?.value - dynamicsData[0]?.value >= 0 ? '+' : ''}
+                          ₽{(dynamicsData[dynamicsData.length - 1]?.value - dynamicsData[0]?.value)?.toLocaleString('ru-RU')}
+                          {' '}
+                          ({(((dynamicsData[dynamicsData.length - 1]?.value - dynamicsData[0]?.value) / dynamicsData[0]?.value) * 100)?.toFixed(2)}%)
+                        </>
+                      ) : (
+                        '0 ₽'
+                      )}
+                    </div>
+                  </div>
+                </Col>
+                <Col xs={6} md={3}>
+                  <div className="bg-dark bg-opacity-50 p-3 rounded text-center">
+                    <div className="text-white-50 small">Всего купонов</div>
+                    <div className="text-warning fw-bold">₽{dynamicsData[dynamicsData.length - 1]?.coupons?.toLocaleString('ru-RU')}</div>
+                  </div>
+                </Col>
+              </Row>
+            )}
+          </Card.Body>
+        </Card>
       )}
 
       {activeTab === 'sectors' && (

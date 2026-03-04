@@ -727,3 +727,65 @@ body {
 .security-icon-name {
   color: var(--text-primary);
 }
+
+/* Portfolio Charts */
+.recharts-wrapper {
+  margin: 0 auto;
+}
+
+.recharts-surface {
+  overflow: visible;
+}
+
+.recharts-tooltip-wrapper {
+  z-index: 100;
+}
+
+.recharts-default-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.1);
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.recharts-xAxis line,
+.recharts-yAxis line {
+  stroke: #666;
+}
+
+.recharts-text {
+  fill: #fff;
+}
+
+/* Custom colors for charts */
+.text-pink {
+  color: #e84393 !important;
+}
+
+/* Chart legend styles */
+.recharts-legend-wrapper {
+  margin-top: 1rem !important;
+}
+
+.recharts-legend-item {
+  margin-right: 1rem !important;
+}
+
+/* Responsive charts */
+@media (max-width: 768px) {
+  .recharts-wrapper {
+    font-size: 12px;
+  }
+
+  .recharts-text {
+    font-size: 11px !important;
+  }
+}

@@ -1,6 +1,6 @@
 import { Card, Row, Col, Nav } from 'react-bootstrap'
 import { useState, useMemo } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, LineChart, Line, AreaChart, Area, ComposedChart } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, AreaChart, Area, Line } from 'recharts'
 
 /**
  * Графики доходности портфеля
@@ -125,26 +125,84 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
       .sort((a, b) => b.pnl - a.pnl)
   })()
 
-  // Кастомный тултип
-  const CustomTooltip = ({ active, payload }) => {
+  // Кастомный тултип для распределения
+  const DistributionTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
-        <div className="bg-dark border border-secondary p-2 rounded">
-          <div className="text-white small fw-bold">{data.name || data.ticker}</div>
-          <div className="text-info">
-            ₽{data.value?.toFixed(2) || data.pnl?.toFixed(2)}
+        <div className="chart-tooltip">
+          <div className="chart-tooltip-title">{data.name}</div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label">Стоимость:</span>
+            <span className="chart-tooltip-value">₽{data.value.toLocaleString('ru-RU')}</span>
           </div>
-          {data.pnlPercent && (
-            <div className={`small ${data.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-              {data.pnl >= 0 ? '+' : ''}{data.pnlPercent.toFixed(2)}%
-            </div>
-          )}
         </div>
       )
     }
     return null
   }
+
+  // Кастомный тултип для динамики
+  const DynamicsTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload
+      return (
+        <div className="chart-tooltip">
+          <div className="chart-tooltip-title">{label}</div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label"><i className="bi bi-circle-fill small text-success"></i> Стоимость:</span>
+            <span className="chart-tooltip-value">₽{data.value?.toLocaleString('ru-RU')}</span>
+          </div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label"><i className="bi bi-circle-fill small text-info"></i> Вложено:</span>
+            <span className="chart-tooltip-value">₽{data.invested?.toLocaleString('ru-RU')}</span>
+          </div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label"><i className="bi bi-circle-fill small text-warning"></i> Купоны:</span>
+            <span className="chart-tooltip-value">₽{data.coupons?.toLocaleString('ru-RU')}</span>
+          </div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label"><i className="bi bi-circle-fill small text-pink"></i> Дивиденды:</span>
+            <span className="chart-tooltip-value">₽{data.dividends?.toLocaleString('ru-RU')}</span>
+          </div>
+          <div className="chart-tooltip-item border-top border-secondary pt-2 mt-1">
+            <span className="chart-tooltip-label"><i className="bi bi-star-fill small text-white"></i> Итого:</span>
+            <span className="chart-tooltip-value text-info">₽{data.total?.toLocaleString('ru-RU')}</span>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Кастомный тултип для доходности
+  const YieldTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload
+      return (
+        <div className="chart-tooltip">
+          <div className="chart-tooltip-title">{data.ticker}</div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label">PnL:</span>
+            <span className={`chart-tooltip-value ${data.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+              {data.pnl >= 0 ? '+' : ''}₽{data.pnl?.toLocaleString('ru-RU')}
+            </span>
+          </div>
+          <div className="chart-tooltip-item">
+            <span className="chart-tooltip-label">Доходность:</span>
+            <span className={`chart-tooltip-value ${data.pnlPercent >= 0 ? 'text-success' : 'text-danger'}`}>
+              {data.pnlPercent >= 0 ? '+' : ''}{data.pnlPercent?.toFixed(2)}%
+            </span>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  // Общие стили для контейнера графика
+  const chartStyle = { width: '100%', height: '100%', minHeight: '300px' }
+  const chartStyleLarge = { width: '100%', height: '100%', minHeight: '400px' }
 
   return (
     <div>
@@ -182,7 +240,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                   <i className="bi bi-pie-chart"></i> Распределение активов
                 </Card.Title>
                 {distributionData.length > 0 ? (
-                  <div style={{ width: '100%', height: '300px' }}>
+                  <div className="portfolio-chart-container">
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie
@@ -199,7 +257,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<DistributionTooltip />} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -264,7 +322,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
               </div>
             </Card.Title>
             {dynamicsData.length > 0 ? (
-              <div style={{ width: '100%', height: '400px' }}>
+              <div className="portfolio-chart-container-large">
                 <ResponsiveContainer>
                   <AreaChart data={dynamicsData}>
                     <defs>
@@ -290,51 +348,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                       axisLine={{ stroke: '#666' }}
                       tickFormatter={(value) => `₽${(value / 1000).toFixed(0)}k`}
                     />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-dark border border-secondary p-3 rounded">
-                              <div className="text-white small fw-bold mb-2">{label}</div>
-                              <div className="d-flex flex-column gap-1">
-                                <div className="d-flex justify-content-between gap-3">
-                                  <span className="text-success">
-                                    <i className="bi bi-circle-fill small"></i> Стоимость:
-                                  </span>
-                                  <span className="fw-bold">₽{data.value?.toLocaleString('ru-RU')}</span>
-                                </div>
-                                <div className="d-flex justify-content-between gap-3">
-                                  <span className="text-info">
-                                    <i className="bi bi-circle-fill small"></i> Вложено:
-                                  </span>
-                                  <span className="fw-bold">₽{data.invested?.toLocaleString('ru-RU')}</span>
-                                </div>
-                                <div className="d-flex justify-content-between gap-3">
-                                  <span className="text-warning">
-                                    <i className="bi bi-circle-fill small"></i> Купоны:
-                                  </span>
-                                  <span className="fw-bold">₽{data.coupons?.toLocaleString('ru-RU')}</span>
-                                </div>
-                                <div className="d-flex justify-content-between gap-3">
-                                  <span className="text-pink">
-                                    <i className="bi bi-circle-fill small"></i> Дивиденды:
-                                  </span>
-                                  <span className="fw-bold">₽{data.dividends?.toLocaleString('ru-RU')}</span>
-                                </div>
-                                <div className="d-flex justify-content-between gap-3 border-top border-secondary pt-2 mt-1">
-                                  <span className="text-white fw-bold">
-                                    <i className="bi bi-star-fill small"></i> Итого:
-                                  </span>
-                                  <span className="fw-bold text-info">₽{data.total?.toLocaleString('ru-RU')}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
+                    <Tooltip content={<DynamicsTooltip />} />
                     <Area
                       type="monotone"
                       dataKey="value"
@@ -429,7 +443,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                   <i className="bi bi-pie-chart-fill"></i> Распределение по тикерам (Топ-10)
                 </Card.Title>
                 {sectorData.length > 0 ? (
-                  <div style={{ width: '100%', height: '300px' }}>
+                  <div className="portfolio-chart-container">
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie
@@ -446,7 +460,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip content={<CustomTooltip />} />
+                        <Tooltip content={<DistributionTooltip />} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -497,10 +511,16 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
               <i className="bi bi-graph-up"></i> Доходность по позициям
             </Card.Title>
             {yieldData.length > 0 ? (
-              <div style={{ width: '100%', height: '400px' }}>
+              <div className="portfolio-chart-container-large">
                 <ResponsiveContainer>
-                  <BarChart data={yieldData} layout="vertical">
-                    <XAxis type="number" tick={{ fill: '#ffffff', fontSize: 12 }} tickLine={{ stroke: '#666' }} axisLine={{ stroke: '#666' }} />
+                  <BarChart data={yieldData} layout="vertical" margin={{ left: 80 }}>
+                    <XAxis 
+                      type="number" 
+                      tick={{ fill: '#ffffff', fontSize: 12 }} 
+                      tickLine={{ stroke: '#666' }} 
+                      axisLine={{ stroke: '#666' }}
+                      tickFormatter={(value) => `₽${(value / 1000).toFixed(0)}k`}
+                    />
                     <YAxis
                       dataKey="ticker"
                       type="category"
@@ -509,7 +529,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                       axisLine={{ stroke: '#666' }}
                       width={80}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<YieldTooltip />} />
                     <Bar dataKey="pnl" fill="#8884d8" barSize={20}>
                       {yieldData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

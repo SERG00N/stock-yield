@@ -176,24 +176,24 @@ function PositionsTable({
             <th>Кол-во</th>
             <th>
               <div className="text-white-50">Цена</div>
-              <div>покупки</div>
+              <div>покупка</div>
             </th>
             <th>
               <div className="text-white-50">Общая</div>
               <div>сумма</div>
             </th>
             <th>Текущая цена</th>
-            <th>Рыночная стоимость</th>
+            <th>Стоимость</th>
             <th>Прибыль/Убыток</th>
             <th>Дата покупки</th>
             {activeTab !== 'stocks' && (
               <>
-                <th>Дата погашения</th>
-                <th>До погашения</th>
-                <th>Купон</th>
+                <th>Погашения</th>
+                <th>Осталось</th>
+                <th>каждые</th>
                 <th>Через</th>
-                <th>До купона</th>
-                <th>Купоны</th>
+                
+                <th>Купон</th>
               </>
             )}
             <th></th>

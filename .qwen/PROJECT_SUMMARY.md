@@ -1,24 +1,19 @@
 The user wants me to create a comprehensive project summary based on the conversation history. Let me analyze what was accomplished in this session and create a detailed markdown summary.
 
 Key accomplishments from this session:
-1. Added history of coupons feature with year-by-year breakdown
-2. Added purchase date field for bonds in the "Add Bond" modal
-3. Implemented automatic calculation of received coupons based on purchase date
-4. Added manual coupon entry for bonds with floating coupons
-5. Added dividend tracking for stocks
-6. Changed bond prices from percentage to actual ruble values
-7. Changed "Average price" to "Total purchase amount" in the Add Bond modal
-8. Added green theme (replaced blue theme)
-9. Fixed table width to 1440px minimum
-10. Added purchase date display for stocks in the positions table
-11. Added ability to manually add dividends for stocks
-12. Fixed coupon history calculation to include manual coupons
+1. Fixed page loading issues (Vite cache)
+2. Git synchronization with commit messages
+3. Created SecurityIcon component for generating colored icons with ticker/name initials
+4. For bonds, icons use name initials; for stocks, icons use ticker initials
+5. Removed tickers from table, showing only names
+6. Made notification banners more compact
+7. Created mobile responsive design with card layout
+8. Updated CSS for better readability (black text for names)
 
-Let me create a comprehensive summary.
-# Project Summary
+Let me create a comprehensive summary.# Project Summary
 
 ## Overall Goal
-Создать веб-приложение для просмотра доходности акций и облигаций Московской биржи с функцией управления инвестиционным портфелем, отслеживанием купонных выплат и дивидендов.
+Создать веб-приложение для управления инвестиционным портфелем с отслеживанием акций и облигаций Московской биржи, купонных выплат и дивидендов с адаптивным мобильным интерфейсом.
 
 ## Key Knowledge
 
@@ -28,177 +23,172 @@ Let me create a comprehensive summary.
 - **Data Source:** MOEX ISS API (https://iss.moex.com/iss) — бесплатный, без ключей
 - **Storage:** localStorage для портфеля и истории
 - **Build Commands:** `npm run dev`, `npm run build`, `npm run lint`
+- **Mobile Dev:** `npm run dev -- --host 0.0.0.0` для доступа по локальной сети
 
 ### Architecture
 ```
-src/
-├── api/moex.js              # MOEX API клиент
-├── components/              # UI компоненты
+stock-yield-viewer/src/
+├── api/
+│   ├── moex.js              # MOEX API клиент
+│   ├── cbr.js               # Курсы валют ЦБ РФ
+│   ├── smartlab.js          # SmartLab парсинг
+│   ├── investfuture.js      # InvestFuture API
+│   └── dividendDatabase.js  # Локальная база дивидендов
+├── components/
+│   ├── SecurityIcon.jsx     # Генерация цветных иконок
+│   ├── PositionCard.jsx     # Мобильная карточка позиции
+│   ├── PositionsTable.jsx   # Таблица позиций (десктоп)
+│   ├── CouponNotifications.jsx # Уведомления о купонах
 │   ├── AddToPortfolioModal.jsx
-│   ├── AddCouponPaymentModal.jsx  # Добавление купона
-│   ├── AddDividendModal.jsx       # Добавление дивиденда
-│   ├── CouponHistoryModal.jsx     # История купонов
-│   ├── DividendHistoryModal.jsx   # История дивидендов
-│   └── ...
+│   ├── AddCouponPaymentModal.jsx
+│   ├── AddDividendModal.jsx
+│   ├── CouponHistoryModal.jsx
+│   ├── DividendHistoryModal.jsx
+│   ├── ExportImportModal.jsx
+│   └── PortfolioCharts.jsx
 ├── hooks/
-│   ├── usePortfolio.js      # Управление портфелем
+│   ├── usePortfolio.js      # Управление портфелем + история
 │   └── useStocks.js         # Получение акций
 ├── pages/
-│   └── PortfolioPage.jsx    # Страница портфеля
-└── App.css                  # Тёмная тема (зелёная)
+│   ├── PortfolioPage.jsx    # Страница портфеля
+│   └── SecurityDetailPage.jsx # Детали бумаги
+├── utils/
+│   └── format.js            # Форматирование
+└── App.css                  # Тёмная зелёная тема + адаптивность
 ```
-
-### API Endpoints
-- Акции: `/engines/stock/markets/shares/boards/TQBR/securities.json`
-- Облигации: `/engines/stock/markets/bonds/boards/TQCB/securities.json`
-- Купоны: `/engines/stock/markets/bonds/securities/{SECID}/coupons.json`
-- Дивиденды: `/engines/stock/markets/shares/securities/{SECID}/dividends.json`
 
 ### User Preferences
 - **Валюта:** рубли (₽)
 - **Тема:** тёмная зелёная (#0d1b1e, #1b3a2b, #1a4d3e)
 - **Язык интерфейса:** русский
-- **Цвет текста:** белый на тёмном фоне
+- **Отображение:** названия бумаг вместо тикеров, чёрный цвет текста
+- **Иконки:** для облигаций — по названию, для акций — по тику
 
-### Important Data Fields
-- `COUPONVALUE` — значение купона в рублях
-- `COUPONPERIOD` — период между купонами в днях
-- `NEXTCOUPON` — дата следующего купона
-- `FACEVALUE` — номинал облигации (по умолчанию 1000₽)
-- `MATDATE` — дата погашения
+### Mobile Breakpoints
+- **Mobile:** < 768px (карточки вместо таблицы)
+- **Tablet:** 769-1024px (уменьшенная таблица)
+- **Desktop:** > 1024px (полная таблица)
 
 ## Recent Actions
 
-### Completed Features (Session: 2026-02-22)
+### Completed Features (Session: 2026-02-23)
 
-1. **[DONE] История купонов с группировкой по годам**
-   - Добавлено отображение общей суммы полученных купонов
-   - Реализована группировка по годам с детализацией по каждой облигации
-   - Добавлены бейджики типов: "При добавлении", "Ручной купон", "Получение"
+1. **[DONE] Синхронизация с Git**
+   - Закоммичены все изменения (23 файла, 2520+ строк)
+   - Отправлено в GitHub: https://github.com/SERG00N/stock-yield
+   - Коммиты с подробными описаниями на русском
 
-2. **[DONE] Дата покупки для акций**
-   - Добавлено поле даты покупки в модальное окно "Добавить акцию"
-   - Дата покупки отображается в таблице позиций для акций
-   - Кнопка редактирования даты покупки
+2. **[DONE] Компактные уведомления о купонах**
+   - Уменьшены отступы и шрифты в `CouponNotifications.jsx`
+   - Информация в одну строку через flexbox
+   - CSS стили для `.coupon-notification`
 
-3. **[DONE] Ручной ввод купонов для облигаций с плавающим купоном**
-   - Создан компонент `AddCouponPaymentModal.jsx`
-   - Добавлена таблица введённых купонов в `AddToPortfolioModal`
-   - Ручные купоны сохраняются в историю с пометкой "Ручной купон"
-   - При добавлении облигации можно ввести несколько выплаченных купонов с датами
+3. **[DONE] Цветные иконки ценных бумаг (SecurityIcon)**
+   - Компонент `SecurityIcon.jsx` генерирует иконки по тику/названию
+   - 12 цветов, определяемых хешем строки
+   - Для облигаций: первые 2 буквы названия (ОФЗ → ОФ)
+   - Для акций: первые 2 буквы тикера (SBER → SB)
+   - Hover-эффект с увеличением
 
-4. **[DONE] История дивидендов для акций**
-   - Создан компонент `DividendHistoryModal.jsx`
-   - Создан компонент `AddDividendModal.jsx` для ручного добавления
-   - Добавлена кнопка "Дивиденд" в таблице позиций для акций
-   - Кнопка "История дивидендов" в шапке портфеля
-   - Группировка дивидендов по годам с детализацией по акциям
+4. **[DONE] Убраны тикеры из отображения**
+   - Таблица позиций: только название бумаги
+   - Уведомления о купонах: название вместо тикера
+   - Удалён стиль `.table-ticker`
+   - `.table-name`: чёрный цвет (#000) для читаемости
 
-5. **[DONE] Реальная цена облигаций в рублях**
-   - Изменён расчёт цены: `(pricePercent × faceValue) / 100`
-   - Добавлено поле `FACEVALUE` в запрос MOEX API
-   - Цена отображается в рублях, а не в процентах от номинала
-
-6. **[DONE] Изменение поля "Средняя цена" на "Общая сумма покупки"**
-   - Пользователь вводит общую сумму покупки
-   - Цена за 1 бумагу рассчитывается автоматически: `сумма / количество`
-   - Добавлено отображение цены за 1 бумагу
-
-7. **[DONE] Замена синей темы на зелёную**
-   - Изменены CSS переменные:
-     ```css
-     --bg-primary: #0d1b1e
-     --bg-secondary: #1b3a2b
-     --bg-card: #1a4d3e
-     --accent: #00b894
-     ```
-   - Исправлена проблема со скриншотами (замена градиентов на сплошные цвета)
-
-8. **[DONE] Оптимизация таблицы позиций**
-   - Установлена минимальная ширина таблицы: 1440px
-   - Уменьшены отступы и шрифты для компактности
-   - Расширен контейнер на всю ширину экрана
+5. **[DONE] Мобильная адаптивная версия**
+   - `PositionCard.jsx`: карточка позиции для мобильных
+   - CSS медиа-запросы для < 768px
+   - Карточки в 2 колонки (Кол-во | Цена, Вложено | Стоимость)
+   - Адаптивный хедер с центрированием
+   - Уменьшенные шрифты и отступы
+   - Кнопки действий в один ряд
+   - Таблица скрыта на мобильных (`d-block d-md-none`)
 
 ### Key Code Changes
 
-**moex.js:**
+**SecurityIcon.jsx:**
 ```javascript
-// Добавлена функция fetchCouponHistory()
-export async function fetchCouponHistory(secid) {
-  // Загружает историю купонов из MOEX API
-  // Возвращает: [{date, value, accrued}, ...]
-}
-
-// Добавлена функция fetchDividendHistory()
-export async function fetchDividendHistory(secid) {
-  // Загружает историю дивидендов из MOEX API
-}
-
-// Обновлён transformBondData() с расчётом реальной цены
-const lastPrice = (pricePercent * faceValue) / 100
+// Для облигаций используем название, для акций — тикер
+const useName = type === 'bond' && name
+const displayStr = useName ? name : ticker
+const bgColor = getColorFromString(displayStr)
+const initials = getInitials(displayStr, !useName)
 ```
 
-**usePortfolio.js:**
-```javascript
-// Добавлена история дивидендов
-const [dividendHistory, setDividendHistory] = useState([])
-
-// Добавлена функция confirmDividend()
-const confirmDividend = useCallback((positionId, dividendAmount, positionData) => {
-  // Подтверждение получения дивиденда
-})
-
-// Обновлена addPosition() для обработки manualCoupons
+**App.css (Mobile):**
+```css
+@media (max-width: 768px) {
+  .position-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .position-card-body {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .table-name { color: #000; }
+}
 ```
 
-**CouponHistoryModal.jsx:**
-```javascript
-// Исправлен расчёт купонов по годам
-// Теперь учитываются ручные купоны из couponHistory
-couponHistory.forEach(item => {
-  const year = new Date(item.date).getFullYear()
-  yearsCoupons[year].amount += item.couponAmount
-  // ...
-})
+**PositionsTable.jsx:**
+```jsx
+{/* Мобильные карточки */}
+<div className="mobile-cards d-block d-md-none">
+  {sortedPositions.map(position => (
+    <PositionCard key={position.id} position={position} {...props} />
+  ))}
+</div>
 ```
 
 ## Current Plan
 
 ### Immediate Next Steps
-1. **[TODO] Автоматическое обновление таймера "До купона"** — ежедневное обновление
-2. **[TODO] Уведомления о приближении купонной даты** — для купонов ≤7 дней
-3. **[TODO] Экспорт/импорт портфеля** — JSON/CSV формат
-4. **[TODO] Страница с деталями бумаги** — свечи, история цен, все купоны
+1. **[TODO] Протестировать на реальном устройстве** — открыть http://[IP-адрес]:5173 на телефоне
+2. **[TODO] Оптимизировать карточки для маленьких экранов** (< 375px)
+3. **[TODO] Добавить свайп-жесты** для удаления позиции
+4. **[TODO] Улучшить читаемость** на ярком солнце (контрастность)
 
 ### Future Enhancements
+- **[TODO]** Экспорт/импорт портфеля (JSON/CSV)
 - **[TODO]** Графики доходности (Recharts/Chart.js)
-- **[TODO]** Синхронизация портфеля с сервером
+- **[TODO]** Push-уведомления о купонах
+- **[TODO]** Страница деталей бумаги с графиками
+- **[TODO]** Синхронизация с сервером
 - **[TODO]** Поддержка нескольких валют портфеля
-- **[TODO]** Push/email уведомления о купонах
-- **[TODO]** История изменения цены покупки
+- **[TODO]** GitHub Pages для публичного доступа
 
 ### Known Issues
 - MOEX API не всегда возвращает `COUPONVALUE` для всех облигаций
-- Для некоторых облигаций дата следующего купона может отсутствовать
 - MOEX API не возвращает историю дивидендов для всех акций (например, SBER)
-- Требуется полная перезагрузка Vite (`--force`) при изменении компонентов
+- Требуется `npm run dev -- --force` при изменении компонентов
+- Vite кэш может вызывать ошибки модулей (решается перезапуском)
 
 ### File Locations
 - Портфель хук: `src/hooks/usePortfolio.js`
 - MOEX API: `src/api/moex.js`
 - Портфель страница: `src/pages/PortfolioPage.jsx`
-- Модальные окна: `src/components/`
+- Мобильные карточки: `src/components/PositionCard.jsx`
+- Иконки: `src/components/SecurityIcon.jsx`
 - Стили: `src/App.css`
 
----
-
-## Summary Metadata
-**Update time:** 2026-02-22T09:00:00.000Z  
-**Session duration:** ~4 hours  
-**Files modified:** 12 (moex.js, usePortfolio.js, PortfolioPage.jsx, AddToPortfolioModal.jsx, CouponHistoryModal.jsx, App.css, + новые компоненты)  
-**New components:** AddCouponPaymentModal.jsx, AddDividendModal.jsx, DividendHistoryModal.jsx
+### Git Status
+- **Branch:** main
+- **Latest Commit:** Mobile responsive version (5c79a9d)
+- **Remote:** https://github.com/SERG00N/stock-yield
+- **Status:** Синхронизировано с origin/main
 
 ---
 
 ## Summary Metadata
-**Update time**: 2026-02-22T09:11:22.216Z 
+**Update time:** 2026-02-23T18:30:00.000Z
+**Session duration:** ~8 hours
+**Files modified:** 8 (App.css, PositionsTable.jsx, CouponNotifications.jsx, SecurityIcon.jsx, PositionCard.jsx + новые)
+**New components:** SecurityIcon.jsx, PositionCard.jsx
+**Lines added:** ~400+
+
+---
+
+## Summary Metadata
+**Update time**: 2026-02-23T18:44:30.275Z 

@@ -242,6 +242,7 @@ body {
 
 .positions-table table {
   font-size: 0.85rem;
+  min-width: 1600px; /* Увеличили минимальную ширину для нового столбца */
 }
 
 .positions-table th {
@@ -263,32 +264,38 @@ body {
 }
 
 /* Узкие колонки */
-.positions-table th:nth-child(4),    /* Кол-во */
-.positions-table td:nth-child(4) {
-  max-width: 50px;
-  text-align: center;
-}
-
 .positions-table th:nth-child(3),    /* Валюта */
 .positions-table td:nth-child(3) {
   max-width: 60px;
   text-align: center;
 }
 
-.positions-table th:nth-child(12),   /* Раз в */
-.positions-table td:nth-child(12) {
+.positions-table th:nth-child(4),    /* Кол-во */
+.positions-table td:nth-child(4) {
   max-width: 50px;
   text-align: center;
 }
 
-.positions-table th:nth-child(13),   /* До купона */
+.positions-table th:nth-child(10),   /* Потенц. доходность */
+.positions-table td:nth-child(10) {
+  min-width: 90px;
+  max-width: 100px;
+}
+
+.positions-table th:nth-child(13),   /* Раз в */
 .positions-table td:nth-child(13) {
+  max-width: 50px;
+  text-align: center;
+}
+
+.positions-table th:nth-child(14),   /* До купона */
+.positions-table td:nth-child(14) {
   max-width: 70px;
   text-align: center;
 }
 
-.positions-table th:nth-child(14),   /* Купоны */
-.positions-table td:nth-child(14) {
+.positions-table th:nth-child(15),   /* Купоны */
+.positions-table td:nth-child(15) {
   max-width: 80px;
   text-align: right;
 }

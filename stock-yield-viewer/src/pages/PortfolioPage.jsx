@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Container, Row, Col, Button, Card, Modal } from 'react-bootstrap'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useStocks } from '../hooks/useStocks'
-import { fetchBonds, transformBondData, formatCouponPeriod, fetchNextCouponDate, daysUntilCoupon, daysUntilMaturity, formatDate, fetchCouponHistory, fetchDividendHistory } from '../api/moex'
+import { fetchBonds, transformBondData, fetchNextCouponDate, daysUntilCoupon, daysUntilMaturity, fetchCouponHistory, fetchDividendHistory } from '../api/moex'
 import AddToPortfolioModal from '../components/AddToPortfolioModal'
 import AddDividendModal from '../components/AddDividendModal'
 import AddManualCouponModal from '../components/AddManualCouponModal'
@@ -57,7 +57,6 @@ function PortfolioPage() {
   const [receivedCoupons, setReceivedCoupons] = useState({})
   const [couponHistoryData, setCouponHistoryData] = useState({})
   const [dividendHistoryData, setDividendHistoryData] = useState({})
-  const [lastCouponUpdate, setLastCouponUpdate] = useState(Date.now())
   const loadedCouponIdsRef = useRef(new Set())
 
   // Обработка подтверждения получения купона
@@ -165,7 +164,7 @@ function PortfolioPage() {
           .filter(bond => bond.price > 0)
 
         setBonds(transformed)
-      } catch (err) {
+      } catch {
         setBondsError('Не удалось загрузить список облигаций')
       } finally {
         setLoadingBonds(false)
@@ -183,23 +182,36 @@ function PortfolioPage() {
       const couponDatesMap = {}
       const couponHistoryMap = {}
 
-      for (const secid of portfolioBondIds) {
-        // Пропускаем уже загруженные и подтверждённые
-        if (loadedCouponIdsRef.current.has(secid)) continue
-        if (receivedCoupons[secid]) continue // Не загружаем для подтверждённых
+      // Загружаем данные параллельно с ограничением до 5 одновременных запросов
+      const BATCH_SIZE = 5
+      for (let i = 0; i < portfolioBondIds.length; i += BATCH_SIZE) {
+        const batch = portfolioBondIds.slice(i, i + BATCH_SIZE)
+        
+        await Promise.all(batch.map(async (secid) => {
+          // Пропускаем уже загруженные и подтверждённые
+          if (loadedCouponIdsRef.current.has(secid)) return
+          if (receivedCoupons[secid]) return
 
-        // Загружаем дату следующего купона
-        const nextCouponDate = await fetchNextCouponDate(secid)
-        const days = daysUntilCoupon(nextCouponDate)
-        if (days !== null) {
-          couponDatesMap[secid] = days
-          loadedCouponIdsRef.current.add(secid)
-        }
+          // Загружаем дату следующего купона
+          const nextCouponDate = await fetchNextCouponDate(secid)
+          const days = daysUntilCoupon(nextCouponDate)
+          if (days !== null) {
+            couponDatesMap[secid] = days
+            loadedCouponIdsRef.current.add(secid)
+          }
 
-        // Загружаем историю купонов
-        const history = await fetchCouponHistory(secid)
-        if (history.length > 0) {
-          couponHistoryMap[secid] = history
+          // Загружаем историю купонов ТОЛЬКО если её нет в кэше
+          if (!couponHistoryData[secid] || couponHistoryData[secid].length === 0) {
+            const history = await fetchCouponHistory(secid)
+            if (history.length > 0) {
+              couponHistoryMap[secid] = history
+            }
+          }
+        }))
+        
+        // Небольшая задержка между батчами, чтобы не перегружать API
+        if (i + BATCH_SIZE < portfolioBondIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
       }
 
@@ -222,11 +234,24 @@ function PortfolioPage() {
 
       const dividendHistoryMap = {}
 
-      for (const secid of portfolioStockIds) {
-        // Загружаем историю дивидендов
-        const history = await fetchDividendHistory(secid)
-        if (history.length > 0) {
-          dividendHistoryMap[secid] = history
+      // Загружаем данные параллельно с ограничением до 5 одновременных запросов
+      const BATCH_SIZE = 5
+      for (let i = 0; i < portfolioStockIds.length; i += BATCH_SIZE) {
+        const batch = portfolioStockIds.slice(i, i + BATCH_SIZE)
+        
+        await Promise.all(batch.map(async (secid) => {
+          // Загружаем историю дивидендов ТОЛЬКО если её нет в кэше
+          if (!dividendHistoryData[secid] || dividendHistoryData[secid].length === 0) {
+            const history = await fetchDividendHistory(secid)
+            if (history.length > 0) {
+              dividendHistoryMap[secid] = history
+            }
+          }
+        }))
+        
+        // Небольшая задержка между батчами
+        if (i + BATCH_SIZE < portfolioStockIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
       }
 
@@ -277,12 +302,10 @@ function PortfolioPage() {
     // Планируем обновление на полночь
     const midnightTimeout = setTimeout(() => {
       recalculateCouponDates()
-      setLastCouponUpdate(Date.now())
 
       // Затем обновляем каждые 24 часа
       const dailyInterval = setInterval(() => {
         recalculateCouponDates()
-        setLastCouponUpdate(Date.now())
       }, 24 * 60 * 60 * 1000)
 
       // Очищаем интервал при размонтировании
@@ -310,9 +333,24 @@ function PortfolioPage() {
 
     // Купонная доходность для облигаций
     const bond = bonds.find(b => b.id === position.securityId)
-    const couponPerBond = bond?.couponValue || 0
-    const totalCoupon = couponPerBond * position.quantity
+    let couponPerBond = bond?.couponValue || 0
     const couponPeriod = bond?.couponPeriod || 0
+    
+    // Проверяем, является ли couponValue годовой суммой
+    // Если couponPeriod ~30 дней (ежемесячно), то couponValue может быть годовой суммой
+    // В этом случае рассчитываем разовый купон: (годовой / 12) или (годовой * период / 365)
+    if (couponPeriod && couponPeriod > 0 && couponPeriod < 100) {
+      // Это облигация с регулярными выплатами (ежемесячно/ежеквартально)
+      // Проверяем, не является ли couponValue годовой суммой
+      // Если couponValue > 100 и couponPeriod ~30, скорее всего это годовая сумма
+      if (couponPerBond > 100 && couponPeriod <= 31) {
+        // Предполагаем, что couponValue - годовая сумма, рассчитываем разовый купон
+        couponPerBond = (couponPerBond * couponPeriod) / 365
+      }
+      // Иначе couponValue уже разовый купон
+    }
+    
+    const totalCoupon = couponPerBond * position.quantity
     const daysToCoupon = couponDates[position.securityId]
 
     // Дата погашения и дни до погашения

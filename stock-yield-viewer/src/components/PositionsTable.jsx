@@ -11,7 +11,6 @@ import PositionCard from './PositionCard'
  */
 function PositionsTable({
   positions,
-  bonds,
   onRemovePosition,
   onEditPurchaseDate,
   onEditPurchasePrice,
@@ -22,7 +21,6 @@ function PositionsTable({
   receivedCoupons = {},
   couponDates = {},
   setCouponDates,
-  couponHistoryData = {},
   dividendHistoryData = {}
 }) {
   const navigate = useNavigate()
@@ -77,11 +75,62 @@ function PositionsTable({
   const stockPositions = positions.filter(p => p.type === 'stock')
   const bondPositions = positions.filter(p => p.type === 'bond')
 
+  // Функция расчета потенциальной доходности
+  const calculatePotentialYield = (position) => {
+    if (position.type === 'bond') {
+      // Для облигаций: купонная доходность + доходность к погашению
+      const currentPrice = position.currentPrice
+      const couponPerBond = position.couponPerBond || 0
+      const couponPeriod = position.couponPeriod || 30
+      
+      // Годовой купон
+      const annualCoupon = (couponPerBond * 365) / couponPeriod
+      
+      // Купонная доходность
+      const couponYield = currentPrice > 0 ? (annualCoupon / currentPrice) * 100 : 0
+      
+      // Доходность к погашению (упрощенно)
+      const daysToMaturity = position.daysToMaturity || 0
+      const faceValue = 1000 // номинал
+      const maturityYield = daysToMaturity > 0 
+        ? ((faceValue - currentPrice) / currentPrice) * (365 / daysToMaturity) * 100 
+        : 0
+      
+      // Общая потенциальная доходность
+      return couponYield + maturityYield
+    } else if (position.type === 'stock') {
+      // Для акций: дивидендная доходность (на основе истории)
+      const dividendHistory = dividendHistoryData[position.securityId] || []
+      const currentPrice = position.currentPrice
+      
+      if (dividendHistory.length > 0 && currentPrice > 0) {
+        // Сумма дивидендов за последние 12 месяцев
+        const now = new Date()
+        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+        
+        const lastYearDividends = dividendHistory
+          .filter(d => new Date(d.date) >= yearAgo)
+          .reduce((sum, d) => sum + (d.dividendAmount || d.amount || 0), 0)
+        
+        return (lastYearDividends / currentPrice) * 100
+      }
+      
+      return 0
+    }
+    
+    return 0
+  }
+
   // Сводка по акциям
   const stocksTotalValue = stockPositions.reduce((sum, p) => sum + p.marketValueRub, 0)
   const stocksTotalInvested = stockPositions.reduce((sum, p) => sum + (p.investedRub), 0)
   const stocksTotalPnL = stocksTotalValue - stocksTotalInvested
   const stocksTotalPnLPercent = stocksTotalInvested > 0 ? (stocksTotalPnL / stocksTotalInvested) * 100 : 0
+  
+  // Средняя дивидендная доходность по акциям
+  const stocksAvgYield = stockPositions.length > 0
+    ? stockPositions.reduce((sum, p) => sum + calculatePotentialYield(p), 0) / stockPositions.length
+    : 0
 
   // Сводка по облигациям
   const bondsTotalValue = bondPositions.reduce((sum, p) => sum + p.marketValueRub, 0)
@@ -89,6 +138,11 @@ function PositionsTable({
   const bondsTotalPnL = bondsTotalValue - bondsTotalInvested
   const bondsTotalPnLPercent = bondsTotalInvested > 0 ? (bondsTotalPnL / bondsTotalInvested) * 100 : 0
   const bondsTotalCoupons = bondPositions.reduce((sum, p) => sum + p.totalCoupon, 0)
+  
+  // Средняя купонная доходность по облигациям
+  const bondsAvgYield = bondPositions.length > 0
+    ? bondPositions.reduce((sum, p) => sum + calculatePotentialYield(p), 0) / bondPositions.length
+    : 0
 
   if (positions.length === 0) {
     return (
@@ -139,6 +193,12 @@ function PositionsTable({
                   {stocksTotalPnL >= 0 ? '+' : ''}{formatNumber(stocksTotalPnL)} ₽ ({stocksTotalPnLPercent >= 0 ? '+' : ''}{stocksTotalPnLPercent.toFixed(2)}%)
                 </div>
               </div>
+              <div>
+                <div className="text-white small">Сред. див. доходность</div>
+                <div className={`fw-bold ${stocksAvgYield >= 10 ? 'text-success' : stocksAvgYield >= 5 ? 'text-info' : 'text-white'}`}>
+                  {stocksAvgYield.toFixed(2)}%
+                </div>
+              </div>
             </div>
           )}
           {activeTab === 'bonds' && (
@@ -160,6 +220,12 @@ function PositionsTable({
               <div>
                 <div className="text-white small">Купоны</div>
                 <div className="fw-bold text-success">{formatNumber(bondsTotalCoupons)} ₽</div>
+              </div>
+              <div>
+                <div className="text-white small">Сред. доходность</div>
+                <div className={`fw-bold ${bondsAvgYield >= 15 ? 'text-success' : bondsAvgYield >= 10 ? 'text-info' : 'text-white'}`}>
+                  {bondsAvgYield.toFixed(2)}%
+                </div>
               </div>
             </div>
           )}
@@ -185,6 +251,10 @@ function PositionsTable({
             <th>Текущая цена</th>
             <th>Стоимость</th>
             <th>Прибыль/Убыток</th>
+            <th>
+              <div className="text-white-50">Потенц.</div>
+              <div>доходность</div>
+            </th>
             <th>Дата покупки</th>
             {activeTab !== 'stocks' && (
               <>
@@ -192,7 +262,7 @@ function PositionsTable({
                 <th>Осталось</th>
                 <th>каждые</th>
                 <th>Через</th>
-                
+
                 <th>Купон</th>
               </>
             )}
@@ -255,6 +325,31 @@ function PositionsTable({
               </td>
               <td className={position.pnl >= 0 ? 'text-success' : 'text-danger'}>
                 {position.pnl >= 0 ? '+' : ''}{position.currency === 'RUB' ? '₽ ' : position.currency + ' '}{formatNumber(position.pnl)} ({position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
+              </td>
+              <td>
+                {(() => {
+                  const yieldPercent = calculatePotentialYield(position)
+                  const yieldColor = yieldPercent >= 15 ? 'text-success' : yieldPercent >= 10 ? 'text-info' : yieldPercent >= 5 ? 'text-white' : 'text-muted'
+                  const yieldSign = yieldPercent > 0 ? '+' : ''
+                  
+                  return (
+                    <div className="fw-bold">
+                      <span className={yieldColor}>
+                        {yieldSign}{yieldPercent.toFixed(2)}%
+                      </span>
+                      {position.type === 'bond' && (
+                        <div className="small text-white-50">
+                          к погашению
+                        </div>
+                      )}
+                      {position.type === 'stock' && (
+                        <div className="small text-white-50">
+                          дивиденды
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </td>
               <td>
                 {(position.type === 'bond' || position.type === 'stock') ? (
@@ -323,27 +418,7 @@ function PositionsTable({
                   </td>
                   <td>
                     {position.type === 'bond' ? (
-                      receivedCoupons[position.securityId] ? (
-                        <Button
-                          variant="outline-success"
-                          size="sm"
-                          onClick={() => {
-                            setReceivedCoupons(prev => ({
-                              ...prev,
-                              [position.securityId]: undefined
-                            }))
-                            if (setCouponDates) {
-                              setCouponDates(prev => ({
-                                ...prev,
-                                [position.securityId]: undefined
-                              }))
-                            }
-                            loadedCouponIdsRef.current.delete(position.securityId)
-                          }}
-                        >
-                          <i className="bi bi-arrow-clockwise"></i>
-                        </Button>
-                      ) : position.daysToCoupon === 0 ? (
+                      position.daysToCoupon === 0 && !receivedCoupons[position.securityId] ? (
                         <div className="d-flex align-items-center gap-2">
                           <span className="text-danger fw-bold">0 дн.</span>
                           <Button
@@ -354,7 +429,7 @@ function PositionsTable({
                             <i className="bi bi-check-lg"></i> Получить
                           </Button>
                         </div>
-                      ) : position.daysToCoupon !== undefined ? (
+                      ) : position.daysToCoupon !== undefined && position.daysToCoupon !== null ? (
                         <span className={position.daysToCoupon <= 7 ? 'text-danger' : 'text-info'}>
                           {position.daysToCoupon} дн.
                         </span>

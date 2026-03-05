@@ -275,10 +275,9 @@ export const currencyCache = new CurrencyCache()
  * Утилита для форматирования суммы с валютой
  * @param {number} amount - Сумма
  * @param {string} currency - Код валюты
- * @param {Object} rates - Курсы валют
  * @returns {string} - Отформатированная строка
  */
-export function formatCurrency(amount, currency, rates = {}) {
+export function formatCurrency(amount, currency) {
   const symbols = {
     RUB: '₽',
     USD: '$',

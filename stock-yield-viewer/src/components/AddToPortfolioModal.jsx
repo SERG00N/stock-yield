@@ -63,10 +63,25 @@ function AddToPortfolioModal({ show, onClose, onAdd, stocks, bonds, securityType
     // Расчёт общей суммы купонов: авто + ручные
     let totalCouponAmount = 0
     let totalReceivedCoupons = receivedCoupons
-    
+
     if (securityType === 'bond') {
+      // Рассчитываем разовый купон на основе периодичности
+      let couponPerBond = security.couponValue || 0
+      const couponPeriod = security.couponPeriod || 0
+      
+      // Проверяем, является ли couponValue годовой суммой
+      // Если couponPeriod ~30 дней (ежемесячно), то couponValue может быть годовой суммой
+      if (couponPeriod && couponPeriod > 0 && couponPeriod < 100) {
+        // Это облигация с регулярными выплатами
+        // Если couponValue > 100 и couponPeriod ~30, скорее всего это годовая сумма
+        if (couponPerBond > 100 && couponPeriod <= 31) {
+          // Предполагаем, что couponValue - годовая сумма, рассчитываем разовый купон
+          couponPerBond = (couponPerBond * couponPeriod) / 365
+        }
+      }
+      
       // Автокупоны
-      totalCouponAmount += receivedCoupons * (security.couponValue || 0) * qty
+      totalCouponAmount += receivedCoupons * couponPerBond * qty
       // Ручные купоны
       manualCoupons.forEach(coupon => {
         totalCouponAmount += coupon.amountPerBond * qty
@@ -99,16 +114,49 @@ function AddToPortfolioModal({ show, onClose, onAdd, stocks, bonds, securityType
     onClose()
   }
 
+  // Вычисляем разовый купон с учетом периодичности
+  const calculateCouponPerBond = () => {
+    if (!selectedSec || securityType !== 'bond') return 0
+    let couponPerBond = selectedSec.couponValue || 0
+    const couponPeriod = selectedSec.couponPeriod || 0
+    
+    // Проверяем, является ли couponValue годовой суммой
+    if (couponPeriod && couponPeriod > 0 && couponPeriod < 100) {
+      if (couponPerBond > 100 && couponPeriod <= 31) {
+        couponPerBond = (couponPerBond * couponPeriod) / 365
+      }
+    }
+    return couponPerBond
+  }
+
   const selectedSec = securities.find(s => s.id === selectedSecurity)
 
   // Автозаполнение количества купонов при изменении даты покупки
   const handlePurchaseDateChange = (e) => {
     const newDate = e.target.value
     setPurchaseDate(newDate)
-    
+
     if (selectedSec && selectedSec.couponPeriod && newDate) {
       const count = calculateReceivedCoupons(newDate, selectedSec.couponPeriod)
       setReceivedCouponsCount(count > 0 ? count.toString() : '')
+      
+      // Автоматический пересчет суммы купонов
+      if (securityType === 'bond' && count > 0 && quantity) {
+        const couponPerBond = calculateCouponPerBond()
+        const qty = parseFloat(quantity)
+        const totalCouponAmount = count * couponPerBond * qty
+        
+        // Обновляем ручные купоны, если они есть
+        let manualTotal = 0
+        manualCoupons.forEach(coupon => {
+          manualTotal += coupon.amountPerBond * qty
+        })
+        
+        const grandTotal = totalCouponAmount + manualTotal
+        console.log(`Пересчет купонов: ${count} купонов × ${couponPerBond.toFixed(2)} × ${qty} шт = ${totalCouponAmount.toFixed(2)} ₽`)
+        console.log(`Ручные купоны: ${manualTotal.toFixed(2)} ₽`)
+        console.log(`Общая сумма купонов: ${grandTotal.toFixed(2)} ₽`)
+      }
     }
   }
 
@@ -346,10 +394,16 @@ function AddToPortfolioModal({ show, onClose, onAdd, stocks, bonds, securityType
                     <span>Цена за 1 бумагу:</span>
                     <span>₽{calculatePricePerBond().toFixed(2)}</span>
                   </div>
-                  {securityType === 'bond' && receivedCouponsCount > 0 && selectedSec?.couponValue > 0 && (
+                  {securityType === 'bond' && receivedCouponsCount > 0 && (
                     <div className="d-flex justify-content-between text-white mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                      <span>Получено купонов:</span>
-                      <span className="text-success">+₽{(parseInt(receivedCouponsCount) * selectedSec.couponValue * parseFloat(quantity)).toFixed(2)}</span>
+                      <span>Получено купонов ({receivedCouponsCount} шт × {calculateCouponPerBond().toFixed(2)} ₽ × {quantity} шт):</span>
+                      <span className="text-success">+₽{(parseInt(receivedCouponsCount) * calculateCouponPerBond() * parseFloat(quantity)).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {securityType === 'bond' && manualCoupons.length > 0 && (
+                    <div className="d-flex justify-content-between text-white mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                      <span>Ручные купоны:</span>
+                      <span className="text-success">+₽{manualCoupons.reduce((sum, c) => sum + c.amountPerBond * parseFloat(quantity), 0).toFixed(2)}</span>
                     </div>
                   )}
                 </div>

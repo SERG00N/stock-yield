@@ -16,24 +16,56 @@ export async function fetchCouponHistoryFromSmartLab(ticker) {
   try {
     // Smart-Lab использует URL вида /bond/{TICKER}/
     const url = `${BASE_URL}/bond/${ticker}/`
+
+    // Пробуем несколько CORS-прокси по очереди
+    const proxyUrls = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+    ]
+
+    let lastError = null
     
-    // Делаем запрос через CORS-прокси (так как Smart-Lab не поддерживает CORS)
-    // Используем allorigins.win как прокси
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-    
-    const response = await fetch(proxyUrl)
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка при запросе к Smart-Lab: ${response.status}`)
+    for (const proxyUrl of proxyUrls) {
+      try {
+        const response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+        const html = data.contents || data.body || ''
+
+        if (!html || html.length < 100) {
+          throw new Error('Пустой ответ')
+        }
+
+        // Парсим HTML для получения купонов
+        const coupons = parseCouponsFromHTML(html, ticker)
+
+        if (coupons.length > 0) {
+          console.log(`Smart-Lab вернул ${coupons.length} купонов для ${ticker}`)
+          return coupons
+        }
+        
+        // Если купонов не найдено, пробуем следующий прокси
+        lastError = new Error('Купоны не найдены')
+      } catch (proxyErr) {
+        console.warn(`Прокси не сработал (${proxyUrl}):`, proxyErr.message)
+        lastError = proxyErr
+        // Продолжаем пробовать следующий прокси
+      }
     }
-    
-    const data = await response.json()
-    const html = data.contents
-    
-    // Парсим HTML для получения купонов
-    const coupons = parseCouponsFromHTML(html, ticker)
-    
-    return coupons
+
+    // Если все прокси не сработали
+    console.error(`Все прокси не сработали для ${ticker}:`, lastError)
+    return []
   } catch (err) {
     console.error(`Smart-Lab API error for ${ticker}:`, err)
     return [] // Возвращаем пустой массив при ошибке
@@ -342,23 +374,56 @@ export async function fetchDividendHistoryFromSmartLab(ticker) {
   try {
     // Smart-Lab использует URL вида /q/{TICKER}/d/ для дивидендов
     const url = `${BASE_URL}/q/${ticker}/d/`
+
+    // Пробуем несколько CORS-прокси по очереди
+    const proxyUrls = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+    ]
+
+    let lastError = null
     
-    // Делаем запрос через CORS-прокси
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-    
-    const response = await fetch(proxyUrl)
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка при запросе к Smart-Lab: ${response.status}`)
+    for (const proxyUrl of proxyUrls) {
+      try {
+        const response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+        const html = data.contents || data.body || ''
+
+        if (!html || html.length < 100) {
+          throw new Error('Пустой ответ')
+        }
+
+        // Парсим HTML для получения дивидендов
+        const dividends = parseDividendsFromHTML(html, ticker)
+
+        if (dividends.length > 0) {
+          console.log(`Smart-Lab вернул ${dividends.length} дивидендов для ${ticker}`)
+          return dividends
+        }
+        
+        // Если дивидендов не найдено, пробуем следующий прокси
+        lastError = new Error('Дивиденды не найдены')
+      } catch (proxyErr) {
+        console.warn(`Прокси не сработал (${proxyUrl}):`, proxyErr.message)
+        lastError = proxyErr
+        // Продолжаем пробовать следующий прокси
+      }
     }
-    
-    const data = await response.json()
-    const html = data.contents
-    
-    // Парсим HTML для получения дивидендов
-    const dividends = parseDividendsFromHTML(html, ticker)
-    
-    return dividends
+
+    // Если все прокси не сработали
+    console.error(`Все прокси не сработали для ${ticker}:`, lastError)
+    return []
   } catch (err) {
     console.error(`Smart-Lab dividend history error for ${ticker}:`, err)
     return [] // Возвращаем пустой массив при ошибке

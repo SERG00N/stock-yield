@@ -1,11 +1,126 @@
 const BASE_URL = 'https://iss.moex.com/iss'
 
+// ============================================================================
+// КЭШИРОВАНИЕ ДАННЫХ
+// ============================================================================
+
+// Срок жизни кэша (в миллисекундах)
+const CACHE_TTL = {
+  COUPON_HISTORY: 24 * 60 * 60 * 1000, // 24 часа
+  DIVIDEND_HISTORY: 24 * 60 * 60 * 1000, // 24 часа
+  NEXT_COUPON_DATE: 6 * 60 * 60 * 1000, // 6 часов
+  STOCKS: 5 * 60 * 1000, // 5 минут
+  BONDS: 5 * 60 * 1000 // 5 минут
+}
+
+// Ключи для localStorage
+const CACHE_KEYS = {
+  COUPON_HISTORY: 'moex-cache-coupon-history',
+  DIVIDEND_HISTORY: 'moex-cache-dividend-history',
+  NEXT_COUPON_DATE: 'moex-cache-next-coupon',
+  STOCKS: 'moex-cache-stocks',
+  BONDS: 'moex-cache-bonds'
+}
+
+/**
+ * Получение данных из кэша
+ * @param {string} key - Ключ кэша
+ * @param {number} ttl - Время жизни кэша в мс
+ * @returns {any|null} Данные из кэша или null если кэш устарел/отсутствует
+ */
+function getFromCache(key, ttl) {
+  try {
+    const cached = localStorage.getItem(key)
+    if (!cached) return null
+
+    const { data, timestamp } = JSON.parse(cached)
+    const now = Date.now()
+
+    // Проверяем актуальность кэша
+    if (now - timestamp > ttl) {
+      localStorage.removeItem(key)
+      return null
+    }
+
+    return data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Сохранение данных в кэш
+ * @param {string} key - Ключ кэша
+ * @param {any} data - Данные для сохранения
+ */
+function saveToCache(key, data) {
+  try {
+    const cacheEntry = {
+      data,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(key, JSON.stringify(cacheEntry))
+  } catch {
+    // Если localStorage переполнен, очищаем старые записи
+    clearOldCache()
+    try {
+      const cacheEntry = {
+        data,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(key, JSON.stringify(cacheEntry))
+    } catch {
+      // Игнорируем ошибки повторного сохранения
+    }
+  }
+}
+
+/**
+ * Очистка старого кэша
+ */
+function clearOldCache() {
+  try {
+    const now = Date.now()
+    const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 дней
+
+    Object.values(CACHE_KEYS).forEach(key => {
+      try {
+        const cached = localStorage.getItem(key)
+        if (!cached) return
+
+        const { timestamp } = JSON.parse(cached)
+        if (now - timestamp > maxAge) {
+          localStorage.removeItem(key)
+        }
+      } catch {
+        localStorage.removeItem(key)
+      }
+    })
+  } catch {
+    // Игнорируем ошибки очистки кэша
+  }
+}
+
+/**
+ * Очистка всего кэша
+ */
+export function clearAllCache() {
+  Object.values(CACHE_KEYS).forEach(key => {
+    localStorage.removeItem(key)
+  })
+  console.log('Кэш полностью очищен')
+}
+
+// ============================================================================
+// API ФУНКЦИИ
+// ============================================================================
+
 /**
  * Получение текущих курсов валют (CBR.ru)
  * @returns {Promise<Object>} - Курсы валют { USD: 75.5, EUR: 82.3, ... }
  */
 export async function fetchCurrencyRates() {
-  const { currencyCache, detectCurrencyFromTicker } = await import('./cbr')
+  const { currencyCache } = await import('./cbr')
   return currencyCache.getRates()
 }
 
@@ -261,8 +376,20 @@ export async function fetchNextCouponDate(secid) {
 /**
  * Получение истории всех купонов для облигации
  * Возвращает массив объектов с датой и суммой купона
+ * Данные кэшируются в localStorage на 24 часа
  */
-export async function fetchCouponHistory(secid, useBackup = true) {
+export async function fetchCouponHistory(secid, useBackup = true, forceRefresh = false) {
+  // Проверяем кэш
+  const cacheKey = `${CACHE_KEYS.COUPON_HISTORY}:${secid}`
+  
+  if (!forceRefresh) {
+    const cached = getFromCache(cacheKey, CACHE_TTL.COUPON_HISTORY)
+    if (cached) {
+      console.log(`[Кэш] Купоны для ${secid} загружены из кэша`)
+      return cached
+    }
+  }
+
   try {
     const url = `${BASE_URL}/engines/stock/markets/bonds/securities/${secid}/coupons.json`
 
@@ -279,6 +406,9 @@ export async function fetchCouponHistory(secid, useBackup = true) {
         const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
         const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
         if (smartLabCoupons.length > 0) {
+          // Сохраняем в кэш
+          saveToCache(cacheKey, smartLabCoupons)
+          console.log(`[Кэш] Купоны для ${secid} сохранены в кэш (Smart-Lab)`)
           return smartLabCoupons
         }
       }
@@ -298,6 +428,9 @@ export async function fetchCouponHistory(secid, useBackup = true) {
         const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
         const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
         if (smartLabCoupons.length > 0) {
+          // Сохраняем в кэш
+          saveToCache(cacheKey, smartLabCoupons)
+          console.log(`[Кэш] Купоны для ${secid} сохранены в кэш (Smart-Lab)`)
           return smartLabCoupons
         }
       }
@@ -320,6 +453,10 @@ export async function fetchCouponHistory(secid, useBackup = true) {
     // Сортируем по дате (от старых к новым)
     coupons.sort((a, b) => new Date(a.date) - new Date(b.date))
 
+    // Сохраняем в кэш
+    saveToCache(cacheKey, coupons)
+    console.log(`[Кэш] Купоны для ${secid} сохранены в кэш (MOEX)`)
+
     return coupons
   } catch (err) {
     console.error(`Ошибка при получении истории купонов для ${secid}:`, err)
@@ -329,6 +466,9 @@ export async function fetchCouponHistory(secid, useBackup = true) {
         const { fetchCouponHistoryFromSmartLab } = await import('./smartlab')
         const smartLabCoupons = await fetchCouponHistoryFromSmartLab(secid)
         if (smartLabCoupons.length > 0) {
+          // Сохраняем в кэш
+          saveToCache(cacheKey, smartLabCoupons)
+          console.log(`[Кэш] Купоны для ${secid} сохранены в кэш (Smart-Lab)`)
           return smartLabCoupons
         }
       } catch (smartLabErr) {
@@ -361,8 +501,20 @@ export function daysUntilCoupon(nextCouponDate) {
  * Получение истории дивидендов для акции
  * Возвращает массив объектов с датой и суммой дивиденда
  * Источники: MOEX API → Smart-Lab → Встроенная база
+ * Данные кэшируются в localStorage на 24 часа
  */
-export async function fetchDividendHistory(secid, useBackup = true) {
+export async function fetchDividendHistory(secid, useBackup = true, forceRefresh = false) {
+  // Проверяем кэш
+  const cacheKey = `${CACHE_KEYS.DIVIDEND_HISTORY}:${secid}`
+  
+  if (!forceRefresh) {
+    const cached = getFromCache(cacheKey, CACHE_TTL.DIVIDEND_HISTORY)
+    if (cached) {
+      console.log(`[Кэш] Дивиденды для ${secid} загружены из кэша`)
+      return cached
+    }
+  }
+
   try {
     const url = `${BASE_URL}/engines/stock/markets/shares/securities/${secid}/dividends.json`
 
@@ -375,7 +527,8 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     if (!response.ok) {
       // Пытаемся получить из резервных источников
       if (useBackup) {
-        return await getDividendsFromBackupSources(secid)
+        const dividends = await getDividendsFromBackupSources(secid, cacheKey)
+        return dividends
       }
       return []
     }
@@ -389,7 +542,8 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     if (dividendsData.length === 0) {
       // Пустой результат, пробуем резервные источники
       if (useBackup) {
-        return await getDividendsFromBackupSources(secid)
+        const dividends = await getDividendsFromBackupSources(secid, cacheKey)
+        return dividends
       }
       return []
     }
@@ -410,12 +564,16 @@ export async function fetchDividendHistory(secid, useBackup = true) {
     // Сортируем по дате (от старых к новым)
     dividends.sort((a, b) => new Date(a.date) - new Date(b.date))
 
+    // Сохраняем в кэш
+    saveToCache(cacheKey, dividends)
+    console.log(`[Кэш] Дивиденды для ${secid} сохранены в кэш (MOEX)`)
+
     return dividends
   } catch (err) {
     console.error(`Ошибка при получении истории дивидендов для ${secid}:`, err)
     // Пытаемся получить из резервных источников
     if (useBackup) {
-      return await getDividendsFromBackupSources(secid)
+      return await getDividendsFromBackupSources(secid, cacheKey)
     }
     return []
   }
@@ -424,10 +582,13 @@ export async function fetchDividendHistory(secid, useBackup = true) {
 /**
  * Получение дивидендов из резервных источников
  * @param {string} secid - Тикер акции
+ * @param {string} cacheKey - Ключ кэша для сохранения
  * @returns {Promise<Array>}
  */
-async function getDividendsFromBackupSources(secid) {
+async function getDividendsFromBackupSources(secid, cacheKey) {
   console.log(`MOEX API не вернул дивиденды для ${secid}, пробуем резервные источники...`)
+
+  let result = []
 
   // 1. Пробуем Smart-Lab
   try {
@@ -435,41 +596,54 @@ async function getDividendsFromBackupSources(secid) {
     const smartLabDividends = await fetchDividendHistoryFromSmartLab(secid)
     if (smartLabDividends.length > 0) {
       console.log(`Smart-Lab вернул ${smartLabDividends.length} дивидендов для ${secid}`)
-      return smartLabDividends
+      result = smartLabDividends
     }
   } catch (smartLabErr) {
     console.log('Smart-Lab не вернул данные:', smartLabErr.message)
   }
 
-  // 2. Пробуем InvestFuture API
-  try {
-    const { fetchDividendsFromInvestFuture, fetchDividendsFromInvestFutureProxy } = await import('./investfuture')
-    let investFutureDividends = await fetchDividendsFromInvestFuture(secid)
-    if (investFutureDividends.length === 0) {
-      investFutureDividends = await fetchDividendsFromInvestFutureProxy(secid)
+  // 2. Если Smart-Lab не вернул, пробуем InvestFuture API
+  if (result.length === 0) {
+    try {
+      const { fetchDividendsFromInvestFuture, fetchDividendsFromInvestFutureProxy } = await import('./investfuture')
+      let investFutureDividends = await fetchDividendsFromInvestFuture(secid)
+      if (investFutureDividends.length === 0) {
+        investFutureDividends = await fetchDividendsFromInvestFutureProxy(secid)
+      }
+      if (investFutureDividends.length > 0) {
+        console.log(`InvestFuture вернул ${investFutureDividends.length} дивидендов для ${secid}`)
+        result = investFutureDividends
+      }
+    } catch (ifErr) {
+      console.log('InvestFuture не вернул данные:', ifErr.message)
     }
-    if (investFutureDividends.length > 0) {
-      console.log(`InvestFuture вернул ${investFutureDividends.length} дивидендов для ${secid}`)
-      return investFutureDividends
-    }
-  } catch (ifErr) {
-    console.log('InvestFuture не вернул данные:', ifErr.message)
   }
 
-  // 3. Пробуем встроеннюю базу
-  try {
-    const { getDividendsFromDatabase } = await import('./dividendDatabase')
-    const databaseDividends = getDividendsFromDatabase(secid)
-    if (databaseDividends.length > 0) {
-      console.log(`Встроенная база вернула ${databaseDividends.length} дивидендов для ${secid}`)
-      return databaseDividends
+  // 3. Если InvestFuture не вернул, пробуем встроеннюю базу
+  if (result.length === 0) {
+    try {
+      const { getDividendsFromDatabase } = await import('./dividendDatabase')
+      const databaseDividends = getDividendsFromDatabase(secid)
+      if (databaseDividends.length > 0) {
+        console.log(`Встроенная база вернула ${databaseDividends.length} дивидендов для ${secid}`)
+        result = databaseDividends
+      }
+    } catch (dbErr) {
+      console.log('Встроенная база не вернула данные:', dbErr.message)
     }
-  } catch (dbErr) {
-    console.log('Встроенная база не вернула данные:', dbErr.message)
   }
 
-  console.log(`Дивиденды для ${secid} не найдены ни в одном источнике`)
-  return []
+  // Сохраняем результат в кэш
+  if (result.length > 0 && cacheKey) {
+    saveToCache(cacheKey, result)
+    console.log(`[Кэш] Дивиденды для ${secid} сохранены в кэш (резервный источник)`)
+  }
+
+  if (result.length === 0) {
+    console.log(`Дивиденды для ${secid} не найдены ни в одном источнике`)
+  }
+  
+  return result
 }
 
 /**

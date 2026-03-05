@@ -93,15 +93,15 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
     ].filter(item => item.value > 0)
   })()
 
-  // Распределение по секторам/тикерам
+  // Распределение по секторам/названиям бумаг
   const sectorData = (() => {
-    const byTicker = positions.reduce((acc, p) => {
-      const existing = acc.find(item => item.name === p.ticker)
+    const byName = positions.reduce((acc, p) => {
+      const existing = acc.find(item => item.name === p.name)
       if (existing) {
         existing.value += p.marketValueRub
       } else {
         acc.push({
-          name: p.ticker,
+          name: p.name,
           value: p.marketValueRub,
           color: `hsl(${Math.random() * 360}, 70%, 50%)`
         })
@@ -109,14 +109,14 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
       return acc
     }, [])
 
-    return byTicker.sort((a, b) => b.value - a.value).slice(0, 10) // Топ-10
+    return byName.sort((a, b) => b.value - a.value).slice(0, 10) // Топ-10
   })()
 
   // Доходность по позициям
   const yieldData = (() => {
     return positions
       .map(p => ({
-        ticker: p.ticker,
+        name: p.name,
         pnl: p.pnl,
         pnlPercent: p.pnlPercent,
         type: p.type,
@@ -181,7 +181,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
       const data = payload[0].payload
       return (
         <div className="chart-tooltip">
-          <div className="chart-tooltip-title">{data.ticker}</div>
+          <div className="chart-tooltip-title">{data.name}</div>
           <div className="chart-tooltip-item">
             <span className="chart-tooltip-label">PnL:</span>
             <span className={`chart-tooltip-value ${data.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -513,7 +513,7 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
             {yieldData.length > 0 ? (
               <div className="portfolio-chart-container-large">
                 <ResponsiveContainer>
-                  <BarChart data={yieldData} layout="vertical" margin={{ left: 80 }}>
+                  <BarChart data={yieldData} layout="vertical" margin={{ left: 120 }}>
                     <XAxis 
                       type="number" 
                       tick={{ fill: '#ffffff', fontSize: 12 }} 
@@ -522,12 +522,12 @@ function PortfolioCharts({ positions, couponHistory, dividendHistory }) {
                       tickFormatter={(value) => `₽${(value / 1000).toFixed(0)}k`}
                     />
                     <YAxis
-                      dataKey="ticker"
+                      dataKey="name"
                       type="category"
-                      tick={{ fill: '#ffffff', fontSize: 12 }}
+                      tick={{ fill: '#ffffff', fontSize: 11 }}
                       tickLine={{ stroke: '#666' }}
                       axisLine={{ stroke: '#666' }}
-                      width={80}
+                      width={120}
                     />
                     <Tooltip content={<YieldTooltip />} />
                     <Bar dataKey="pnl" fill="#8884d8" barSize={20}>

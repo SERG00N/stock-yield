@@ -32,7 +32,7 @@ const CURRENCY_SYMBOLS = {
 }
 
 function PortfolioPage() {
-  const { portfolio, redeemedBonds, couponHistory, dividendHistory, currencyRates, baseCurrency, setBaseCurrency, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, addManualCoupon, removeCoupon, confirmDividend, removeDividend, confirmBondRedemption, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
+  const { portfolio, redeemedBonds, couponHistory, dividendHistory, currencyRates, baseCurrency, setBaseCurrency, addPosition, removePosition, updatePurchaseDate, updatePurchasePrice, getTotalValue, getTotalPnL, confirmCoupon, addManualCoupon, removeCoupon, editCoupon, confirmDividend, removeDividend, confirmBondRedemption, exportJSON, exportCSV, importJSON, importCSV } = usePortfolio()
   const { stocks: stockList, loading: stocksLoading, error: stocksError } = useStocks()
   const [bonds, setBonds] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -592,6 +592,7 @@ function PortfolioPage() {
           bonds={bonds}
           couponHistoryData={couponHistoryData}
           onRemoveCoupon={removeCoupon}
+          onEditCoupon={editCoupon}
         />
 
         {/* Модальное окно редактирования даты покупки */}

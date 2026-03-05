@@ -1,9 +1,14 @@
 import { Modal, Button, Table, Badge } from 'react-bootstrap'
+import { useState } from 'react'
+import EditCouponModal from './EditCouponModal'
 
 /**
  * Модальное окно для отображения истории полученных купонов
  */
-function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, bonds, couponHistoryData, onRemoveCoupon }) {
+function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, bonds, couponHistoryData, onRemoveCoupon, onEditCoupon }) {
+  const [editingCoupon, setEditingCoupon] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+
   // Сортировка по дате (новые сверху)
   const sortedHistory = [...couponHistory].sort((a, b) =>
     new Date(b.date) - new Date(a.date)
@@ -246,22 +251,51 @@ function CouponHistoryModal({ show, onClose, couponHistory, portfolioPositions, 
                       )}
                     </td>
                     <td>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Удалить этот купон из истории?')) {
-                            onRemoveCoupon(item.id)
-                          }
-                        }}
-                      >
-                        <i className="bi bi-trash"></i>
-                      </Button>
+                      <div className="d-flex gap-1">
+                        <Button
+                          variant="outline-warning"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCoupon(item)
+                            setShowEditModal(true)
+                          }}
+                          title="Редактировать"
+                        >
+                          <i className="bi bi-pencil-square"></i>
+                        </Button>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Удалить этот купон из истории?')) {
+                              onRemoveCoupon(item.id)
+                            }
+                          }}
+                          title="Удалить"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
+
+            {/* Модальное окно редактирования купона */}
+            <EditCouponModal
+              show={showEditModal}
+              onClose={() => {
+                setShowEditModal(false)
+                setEditingCoupon(null)
+              }}
+              onSave={(updates) => {
+                onEditCoupon(updates.id, updates)
+                setShowEditModal(false)
+                setEditingCoupon(null)
+              }}
+              coupon={editingCoupon}
+            />
           </>
         )}
       </Modal.Body>
